@@ -48,9 +48,7 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
             
             circularity = 4 * np.pi * (area / (perimeter * perimeter))
             
-            # STRICT CIRCULARITY CHECK
-            # Potholes aren't perfect circles, but they aren't completely jagged lines either.
-            if circularity < 0.35:
+            if circularity < 0.5:
                 continue
 
             # STRICT COLOR CHECK (Must be dark and low saturation - typical asphalt colors)
@@ -62,11 +60,18 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
             hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             mean_val = cv2.mean(hsv_img, mask=mask)
             # mean_val is (H, S, V, _)
+            mean_hue = mean_val[0]
             mean_saturation = mean_val[1]
             mean_brightness = mean_val[2]
             
             # If it's highly saturated (colorful) or very bright, it's not a pothole
-            if mean_saturation > 80 or mean_brightness > 150:
+            # A pothole is dark grey/black asphalt. Saturation should be very low.
+            if mean_saturation > 40 or mean_brightness > 120:
+                continue
+            
+            # Additional check: Asphalt shouldn't have strong warm colors (red/orange/yellow/brown)
+            # Dinosaur is brownish.
+            if mean_saturation > 20 and (mean_hue < 30 or mean_hue > 150):
                 continue
             
             # Score combining area relative to image and circularity.
