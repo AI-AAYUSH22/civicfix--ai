@@ -93,6 +93,31 @@ def seed_database(db: Session):
     """
     Seeds initial municipal wards, roads, contractors, demo users, cases, and work orders.
     """
+    # Ensure all demo users exist even if DB was previously created
+    for u_data in [
+        ("citizen@civicfix.org", "Aarav Sharma", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"]),
+        ("contractor@roadworks.in", "RoadWorks Unit A", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"]),
+        ("engineer@mcgm.gov.in", "Er. Rajesh Kulkarni", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"]),
+        ("admin@civicfix.org", "CivicFix Admin", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"]),
+        ("citizen@civicfix.ai", "Aarav Sharma (AI)", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"]),
+        ("contractor@civicfix.ai", "RoadWorks Unit A (AI)", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"]),
+        ("engineer@civicfix.ai", "Er. Rajesh Kulkarni (AI)", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"]),
+        ("admin@civicfix.ai", "CivicFix Admin (AI)", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"]),
+    ]:
+        existing = db.query(User).filter(User.email == u_data[0]).first()
+        if not existing:
+            db.add(User(
+                email=u_data[0],
+                full_name=u_data[1],
+                role=u_data[2],
+                phone=u_data[3],
+                hashed_password=hash_password(u_data[4]),
+                is_active=True
+            ))
+        elif not existing.hashed_password:
+            existing.hashed_password = hash_password(u_data[4])
+    db.commit()
+
     # Check if already seeded
     if db.query(Ward).count() > 0:
         return
