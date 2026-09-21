@@ -55,8 +55,7 @@ export const CitizenHome: React.FC = () => {
       const file = e.target.files[0];
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
-      setReportStep(3); // move to confirm
-
+      setAiResult(null);
       setAnalyzingPhoto(true);
       try {
         const formData = new FormData();
@@ -68,6 +67,9 @@ export const CitizenHome: React.FC = () => {
         if (res.ok) {
           const data = await res.json();
           setAiResult(data);
+          if (data.is_pothole && data.confidence >= 50) {
+            setReportStep(3);
+          }
         }
       } catch (err) {
         console.error('AI Analysis failed:', err);
@@ -305,7 +307,12 @@ export const CitizenHome: React.FC = () => {
               <Button variant="secondary" size="sm" onClick={() => setReportStep(1)}>
                 Back
               </Button>
-              <Button variant="primary" size="sm" onClick={handleUseSnapshot}>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={handleUseSnapshot}
+                disabled={analyzingPhoto || (selectedFile !== null && (!aiResult || !aiResult.is_pothole || aiResult.confidence < 50))}
+              >
                 Use Snapshot
               </Button>
             </>
@@ -379,6 +386,21 @@ export const CitizenHome: React.FC = () => {
                   </>
                 )}
               </div>
+
+              {analyzingPhoto && (
+                <div className="p-2 bg-indigo-50 border border-indigo-200 rounded-lg flex items-center justify-center gap-2 text-indigo-700">
+                  <Sparkles size={16} className="animate-spin" />
+                  <span className="font-semibold text-xs">AI is analyzing image...</span>
+                </div>
+              )}
+              {aiResult && (!aiResult.is_pothole || aiResult.confidence < 50) && (
+                <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-center">
+                  <p className="text-red-600 font-bold text-xs">
+                    Please upload a proper pothole. The AI could not verify this image.
+                  </p>
+                </div>
+              )}
+
               <input
                 ref={fileInputRef}
                 type="file"
