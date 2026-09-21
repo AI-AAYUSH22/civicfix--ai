@@ -178,7 +178,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     
     ctx.fillStyle = '#94A3B8';
     const timestamp = new Date().toLocaleString();
-    ctx.fillText(`${timestamp} • WO: ${selectedOrder.id} • ${selectedOrder.ward}`, 20, canvas.height - 10);
+    ctx.fillText(`${timestamp} • WO: ${selectedOrder.id} • ${selectedOrder.location} • ${selectedOrder.ward}`, 20, canvas.height - 10);
     
     // 3. Convert to File and Set Preview
     canvas.toBlob(async (blob) => {
