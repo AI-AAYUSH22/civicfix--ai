@@ -394,9 +394,9 @@ export const CitizenHome: React.FC = () => {
                 </div>
               )}
               {aiResult && (!aiResult.is_pothole || aiResult.confidence < 50) && (
-                <div className="p-2 bg-red-50 border border-red-200 rounded-lg text-center">
-                  <p className="text-red-600 font-bold text-xs">
-                    Please upload a proper pothole. The AI could not verify this image.
+                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-8 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce">
+                  <p className="font-black text-3xl tracking-widest uppercase flex items-center gap-3">
+                    <span>⚠️</span> ERROR: NO POTHOLE
                   </p>
                 </div>
               )}
