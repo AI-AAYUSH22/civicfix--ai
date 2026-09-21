@@ -24,7 +24,7 @@ function AppContent() {
 
   // Municipal state
   const [municipalSection, setMunicipalSection] = useState<MunicipalNavSection>('dashboard');
-  const selectedWard = 'Ward 12 — Dadar West';
+  const selectedWard = 'Ward G/N — Dadar / Mahim';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">

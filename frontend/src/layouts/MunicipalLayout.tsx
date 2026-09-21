@@ -3,10 +3,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   LayoutDashboard,
   FolderKanban,
-  Map as MapIcon,
   Sparkles,
   Users,
-  BarChart3,
   Search,
   Bell,
   Building2,
@@ -18,10 +16,8 @@ import { pageVariants } from '@/animations';
 export type MunicipalNavSection =
   | 'dashboard'
   | 'cases'
-  | 'map'
   | 'verification'
-  | 'contractors'
-  | 'analytics';
+  | 'contractors';
 
 interface MunicipalLayoutProps {
   children: React.ReactNode;
@@ -34,7 +30,7 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
   children,
   activeSection,
   onSelectSection,
-  selectedWard = 'Ward 12 — Dadar West',
+  selectedWard = 'Ward G/N — Dadar West / Mahim',
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -54,30 +50,20 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
       id: 'cases',
       label: 'Case Management',
       icon: <FolderKanban size={18} />,
-      badge: '18 Active',
+      badge: 'Active',
       badgeColor: 'bg-slate-700 text-slate-200',
-    },
-    {
-      id: 'map',
-      label: 'Ward GIS Map',
-      icon: <MapIcon size={18} />,
     },
     {
       id: 'verification',
       label: 'AI Verification Queue',
       icon: <Sparkles size={18} />,
-      badge: '3 Review',
+      badge: 'Review',
       badgeColor: 'bg-[#0F766E] text-white',
     },
     {
       id: 'contractors',
       label: 'Contractors & Teams',
       icon: <Users size={18} />,
-    },
-    {
-      id: 'analytics',
-      label: 'SLA & SLA Analytics',
-      icon: <BarChart3 size={18} />,
     },
   ];
 

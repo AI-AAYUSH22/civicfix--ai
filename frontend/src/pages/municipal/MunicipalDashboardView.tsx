@@ -21,8 +21,6 @@ import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/utils/caseUtils';
 import type { MunicipalNavSection } from '@/layouts/MunicipalLayout';
 import type { PotholeCase } from '@/types';
-import CityMapPlaceholder from '@/components/CityMapPlaceholder';
-import WardAttention from '@/components/WardAttention';
 import { useApp } from '@/context/AppContext';
 import { approveExpenseMemo } from '@/services/api';
 
@@ -35,17 +33,14 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
 }) => {
   const {
     cases,
-    stats,
-    wards,
     contractors,
     validateCaseHandler,
     assignWorkOrderHandler,
     reviewVerificationHandler,
   } = useApp();
 
-  // Fixed jurisdictional scope: Ward Engineer assigned to Ward G/N (Dadar West / Mahim)
+  // Fixed jurisdictional scope: Ward Engineer assigned exclusively to Ward G/N (Dadar West / Mahim)
   const assignedWardId = 'G/N';
-  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane'>('Mumbai');
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -70,9 +65,9 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
     }
   };
 
-  const filteredCases = useMemo(() => {
-    // Strictly isolate engineer's jurisdiction to Ward G/N (Dadar West / Mahim)
-    let result = cases.filter(
+  // Strict ward filtering: Only complaints in Ward G/N (Dadar West / Mahim) belong to this engineer
+  const wardCases = useMemo(() => {
+    return cases.filter(
       (c) =>
         c.wardId === assignedWardId ||
         c.wardId === 'w12' ||
@@ -81,10 +76,10 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
         c.location.toLowerCase().includes('mahim') ||
         c.location.toLowerCase().includes('g/n')
     );
-    // If empty in mock mode, fallback to all available cases for smooth viewing
-    if (result.length === 0) {
-      result = cases;
-    }
+  }, [cases, assignedWardId]);
+
+  const filteredCases = useMemo(() => {
+    let result = wardCases;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -98,34 +93,34 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
       result = result.filter((c) => c.status.toLowerCase() === statusFilter.toLowerCase());
     }
     return result;
-  }, [cases, assignedWardId, searchQuery, statusFilter]);
+  }, [wardCases, searchQuery, statusFilter]);
 
-  // Real-time live computed metrics from current cases
+  // Real-time live computed metrics strictly for Ward G/N
   const realTimeStats = useMemo(() => {
-    const active = cases.filter((c) =>
+    const active = wardCases.filter((c) =>
       ['REPORTED', 'VALIDATED', 'ASSIGNED', 'REPAIRING', 'Under Repair', 'Reported', 'Validated', 'Assigned'].includes(c.status)
     ).length;
-    const pendingVerif = cases.filter((c) =>
+    const pendingVerif = wardCases.filter((c) =>
       ['VERIFICATION', 'NEEDS_REVIEW', 'Needs Review', 'AI Verification'].includes(c.status) || !!c.verification
     ).length;
-    const underRepair = cases.filter((c) =>
+    const underRepair = wardCases.filter((c) =>
       ['REPAIRING', 'Under Repair', 'In Progress'].includes(c.status)
     ).length;
-    const resolved = cases.filter((c) =>
+    const resolved = wardCases.filter((c) =>
       ['VERIFIED', 'Verified', 'CLOSED', 'Closed', 'Resolved'].includes(c.status)
     ).length;
 
     return {
-      totalActive: active || stats.totalActive,
-      pendingVerification: pendingVerif || stats.pendingVerification,
-      underRepair: underRepair || stats.underRepair,
-      resolvedThisMonth: resolved || stats.resolvedThisMonth,
+      totalActive: active,
+      pendingVerification: pendingVerif,
+      underRepair: underRepair,
+      resolvedThisMonth: resolved,
     };
-  }, [cases, stats]);
+  }, [wardCases]);
 
-  // Verification cases awaiting engineer attention
+  // Verification cases awaiting engineer attention strictly in Ward G/N
   const verificationCases = useMemo(() => {
-    return cases.filter(
+    return wardCases.filter(
       (c) =>
         c.status === 'NEEDS_REVIEW' ||
         c.status === 'Needs Review' ||
@@ -133,7 +128,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
         c.status === 'VERIFIED' ||
         c.verification
     );
-  }, [cases]);
+  }, [wardCases]);
 
   // Handle Validate
   const handleValidate = async (caseId: string) => {
@@ -273,49 +268,15 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
             </Card>
           </div>
 
-          {/* GIS Map & Attention Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-[#172033] uppercase tracking-wider">
-                  Ward GIS Map & Heatmap
-                </h3>
-                <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0] shadow-subtle">
-                  {(['Mumbai', 'Thane'] as const).map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setMapCity(c)}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        mapCity === c
-                          ? 'bg-[#172033] text-white shadow-sm'
-                          : 'text-[#64748B] hover:text-[#172033]'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="h-[360px] rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-subtle bg-white">
-                <CityMapPlaceholder cases={filteredCases} city={mapCity} />
-              </div>
-            </div>
-
-            <WardAttention
-              wards={wards}
-            />
-          </div>
-
-          {/* Recent Case Queue */}
+          {/* Recent Case Queue - Ward G/N Cases Only */}
           <Card padded="md" className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base text-[#172033]">Recent Complaints</h3>
-                <p className="text-xs text-[#64748B]">Showing latest reports requiring action</p>
+                <h3 className="font-bold text-base text-[#172033]">Recent Complaints — Ward G/N</h3>
+                <p className="text-xs text-[#64748B]">Showing latest reports requiring action in your jurisdiction</p>
               </div>
-              <span className="text-xs text-[#64748B] font-medium">
-                {filteredCases.length} total cases in system
+              <span className="text-xs text-[#0F766E] font-semibold bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
+                {filteredCases.length} assigned ward cases
               </span>
             </div>
 
@@ -366,10 +327,10 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h1 className="text-2xl font-bold text-[#172033] tracking-tight">
-                Case Management Directory
+                Case Management Directory — Ward G/N
               </h1>
               <p className="text-xs text-[#64748B]">
-                {filteredCases.length} total cases logged across selected wards
+                {filteredCases.length} total cases logged in Ward G/N (Dadar West / Mahim)
               </p>
             </div>
 
