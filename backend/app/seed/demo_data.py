@@ -134,14 +134,35 @@ def seed_database(db: Session):
     db.add_all(contractors)
     db.flush()
 
-    # 3. Wards
+    # 3. Wards — All 27 Municipal Wards of Mumbai
     wards_data = [
-        {"name": "Ward 12 — Dadar West", "code": "G/N-12", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
-        {"name": "Ward 07 — Bandra West", "code": "H/W-07", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
-        {"name": "Ward 18 — Andheri East", "code": "K/E-18", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
-        {"name": "Ward 05 — Kurla West", "code": "L-05", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
-        {"name": "Ward 03 — Naupada", "code": "TMC-03", "city": "Thane", "lat": 19.1904, "lng": 72.9723},
-        {"name": "Ward 08 — Ghodbunder Road", "code": "TMC-08", "city": "Thane", "lat": 19.2482, "lng": 72.9558},
+        {"name": "Ward A — Colaba / Churchgate / Fort", "code": "A", "city": "Mumbai", "lat": 18.9220, "lng": 72.8347},
+        {"name": "Ward B — Sandhurst Road / Dongri / Mazgaon", "code": "B", "city": "Mumbai", "lat": 18.9532, "lng": 72.8397},
+        {"name": "Ward C — Marine Lines / Bhuleshwar / Pydhonie", "code": "C", "city": "Mumbai", "lat": 18.9500, "lng": 72.8250},
+        {"name": "Ward D — Malabar Hill / Tardeo / Girgaon", "code": "D", "city": "Mumbai", "lat": 18.9667, "lng": 72.8167},
+        {"name": "Ward E — Byculla / Mumbai Central / Nagpada", "code": "E", "city": "Mumbai", "lat": 18.9750, "lng": 72.8300},
+        {"name": "Ward F/N — Matunga / Sion / Wadala", "code": "F/N", "city": "Mumbai", "lat": 19.0333, "lng": 72.8550},
+        {"name": "Ward F/S — Parel / Sewri / Lalbaug", "code": "F/S", "city": "Mumbai", "lat": 19.0000, "lng": 72.8400},
+        {"name": "Ward G/N — Dadar / Mahim / Dharavi", "code": "G/N", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
+        {"name": "Ward G/S — Worli / Prabhadevi / Lower Parel", "code": "G/S", "city": "Mumbai", "lat": 19.0100, "lng": 72.8200},
+        {"name": "Ward H/E — Santacruz East / Khar East / Vakola", "code": "H/E", "city": "Mumbai", "lat": 19.0800, "lng": 72.8550},
+        {"name": "Ward H/W — Bandra West / Khar West", "code": "H/W", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
+        {"name": "Ward K/E — Andheri East / Marol / Sakinaka", "code": "K/E", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
+        {"name": "Ward K/W — Andheri West / Juhu / Versova", "code": "K/W", "city": "Mumbai", "lat": 19.1200, "lng": 72.8250},
+        {"name": "Ward L — Kurla West / Sakinaka / Asalpha", "code": "L", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
+        {"name": "Ward M/E — Chembur East / Govandi / Mankhurd", "code": "M/E", "city": "Mumbai", "lat": 19.0550, "lng": 72.9100},
+        {"name": "Ward M/W — Chembur West / Tilak Nagar", "code": "M/W", "city": "Mumbai", "lat": 19.0600, "lng": 72.8950},
+        {"name": "Ward N — Ghatkopar / Vidyavihar / Pant Nagar", "code": "N", "city": "Mumbai", "lat": 19.0850, "lng": 72.9080},
+        {"name": "Ward P/N — Malad West / Marve / Manori", "code": "P/N", "city": "Mumbai", "lat": 19.1860, "lng": 72.8485},
+        {"name": "Ward P/S — Goregaon East & West / Aarey Colony", "code": "P/S", "city": "Mumbai", "lat": 19.1630, "lng": 72.8420},
+        {"name": "Ward R/C — Borivali West / Gorai / Charkop", "code": "R/C", "city": "Mumbai", "lat": 19.2300, "lng": 72.8550},
+        {"name": "Ward R/N — Dahisar / Borivali North", "code": "R/N", "city": "Mumbai", "lat": 19.2550, "lng": 72.8600},
+        {"name": "Ward R/S — Kandivali East & West / Poisar", "code": "R/S", "city": "Mumbai", "lat": 19.2050, "lng": 72.8500},
+        {"name": "Ward S — Bhandup / Powai / Kanjurmarg / Vikhroli", "code": "S", "city": "Mumbai", "lat": 19.1400, "lng": 72.9300},
+        {"name": "Ward T — Mulund / Nahur", "code": "T", "city": "Mumbai", "lat": 19.1720, "lng": 72.9550},
+        {"name": "Ward K/E-2 — Jogeshwari East", "code": "K/E-2", "city": "Mumbai", "lat": 19.1350, "lng": 72.8600},
+        {"name": "Ward L-2 — Chandivali / Powai South", "code": "L-2", "city": "Mumbai", "lat": 19.1100, "lng": 72.8900},
+        {"name": "Ward P/N-2 — Dindoshi / Malad East", "code": "P/N-2", "city": "Mumbai", "lat": 19.1750, "lng": 72.8700},
     ]
 
     wards = []
@@ -151,17 +172,21 @@ def seed_database(db: Session):
         wards.append(ward)
     db.flush()
 
+    # Find key wards by code for demo case relationships
+    gn_ward = next(w for w in wards if w.code == "G/N")
+    hw_ward = next(w for w in wards if w.code == "H/W")
+    ke_ward = next(w for w in wards if w.code == "K/E")
+    l_ward = next(w for w in wards if w.code == "L")
+
     # 4. Roads
     roads_data = [
-        (wards[0], "Gokhale Road North"),
-        (wards[0], "Ranade Road"),
-        (wards[1], "Hill Road"),
-        (wards[1], "Linking Road"),
-        (wards[2], "Sahar Road"),
-        (wards[2], "Andheri-Kurla Road"),
-        (wards[3], "LBS Marg"),
-        (wards[4], "Gokhale Road Thane"),
-        (wards[5], "Ghodbunder Highway"),
+        (gn_ward, "Gokhale Road North"),
+        (gn_ward, "Ranade Road"),
+        (hw_ward, "Hill Road"),
+        (hw_ward, "Linking Road"),
+        (ke_ward, "Sahar Road"),
+        (ke_ward, "Andheri-Kurla Road"),
+        (l_ward, "LBS Marg"),
     ]
     roads = []
     for ward, road_name in roads_data:
@@ -173,7 +198,7 @@ def seed_database(db: Session):
     # 5. Realistic Cases across all lifecycle stages
     now = datetime.utcnow()
     c1 = contractors[0]
-    w1 = wards[0]
+    w1 = gn_ward
     r1 = roads[0]
 
     # Case 1: VERIFIED with full verification result (Gold standard demo case)
@@ -319,7 +344,7 @@ def seed_database(db: Session):
         description="Fresh pothole formed after heavy rainfall. Dangerous for alighting commuters.",
         severity="Medium",
         status="REPORTED",
-        ward_id=wards[1].id,
+        ward_id=hw_ward.id,
         road_id=roads[2].id,
         created_at=now - timedelta(hours=8),
     )
@@ -334,7 +359,7 @@ def seed_database(db: Session):
         description="Sunken road trench extending 2 meters across lane.",
         severity="High",
         status="VALIDATED",
-        ward_id=wards[1].id,
+        ward_id=hw_ward.id,
         road_id=roads[3].id,
         created_at=now - timedelta(days=1),
     )
@@ -349,7 +374,7 @@ def seed_database(db: Session):
         description="Severe pitting and potholes near metro construction entry.",
         severity="High",
         status="ASSIGNED",
-        ward_id=wards[2].id,
+        ward_id=ke_ward.id,
         road_id=roads[4].id,
         created_at=now - timedelta(days=2),
     )
@@ -375,7 +400,7 @@ def seed_database(db: Session):
         description="Crater 15cm deep causing vehicular slow-downs.",
         severity="High",
         status="REPAIRING",
-        ward_id=wards[2].id,
+        ward_id=ke_ward.id,
         road_id=roads[5].id,
         created_at=now - timedelta(days=3),
     )

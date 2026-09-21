@@ -1,11 +1,33 @@
 import type { Ward, PotholeCase } from '@/types';
 
 export const wards: Ward[] = [
-  { id: 'w8', name: 'Ward 8', city: 'Mumbai', pendingCount: 12 },
-  { id: 'w12', name: 'Ward 12', city: 'Mumbai', pendingCount: 18 },
-  { id: 'w15', name: 'Ward 15', city: 'Mumbai', pendingCount: 9 },
-  { id: 'w21', name: 'Ward 21', city: 'Thane', pendingCount: 6 },
-  { id: 'w24', name: 'Ward 24', city: 'Thane', pendingCount: 4 },
+  { id: 'A', name: 'Ward A — Colaba / Churchgate', city: 'Mumbai', pendingCount: 5 },
+  { id: 'B', name: 'Ward B — Sandhurst Road / Dongri', city: 'Mumbai', pendingCount: 3 },
+  { id: 'C', name: 'Ward C — Marine Lines / Bhuleshwar', city: 'Mumbai', pendingCount: 4 },
+  { id: 'D', name: 'Ward D — Malabar Hill / Tardeo', city: 'Mumbai', pendingCount: 6 },
+  { id: 'E', name: 'Ward E — Byculla / Mumbai Central', city: 'Mumbai', pendingCount: 7 },
+  { id: 'F/N', name: 'Ward F/N — Matunga / Sion', city: 'Mumbai', pendingCount: 11 },
+  { id: 'F/S', name: 'Ward F/S — Parel / Sewri', city: 'Mumbai', pendingCount: 8 },
+  { id: 'G/N', name: 'Ward G/N — Dadar / Mahim / Dharavi', city: 'Mumbai', pendingCount: 18 },
+  { id: 'G/S', name: 'Ward G/S — Worli / Prabhadevi', city: 'Mumbai', pendingCount: 10 },
+  { id: 'H/E', name: 'Ward H/E — Santacruz East / Khar East', city: 'Mumbai', pendingCount: 12 },
+  { id: 'H/W', name: 'Ward H/W — Bandra West / Khar West', city: 'Mumbai', pendingCount: 14 },
+  { id: 'K/E', name: 'Ward K/E — Andheri East / Marol', city: 'Mumbai', pendingCount: 16 },
+  { id: 'K/W', name: 'Ward K/W — Andheri West / Juhu / Versova', city: 'Mumbai', pendingCount: 13 },
+  { id: 'L', name: 'Ward L — Kurla West / Sakinaka', city: 'Mumbai', pendingCount: 15 },
+  { id: 'M/E', name: 'Ward M/E — Chembur East / Govandi / Mankhurd', city: 'Mumbai', pendingCount: 9 },
+  { id: 'M/W', name: 'Ward M/W — Chembur West / Tilak Nagar', city: 'Mumbai', pendingCount: 7 },
+  { id: 'N', name: 'Ward N — Ghatkopar / Vidyavihar', city: 'Mumbai', pendingCount: 10 },
+  { id: 'P/N', name: 'Ward P/N — Malad West / Marve', city: 'Mumbai', pendingCount: 14 },
+  { id: 'P/S', name: 'Ward P/S — Goregaon / Aarey', city: 'Mumbai', pendingCount: 8 },
+  { id: 'R/C', name: 'Ward R/C — Borivali / Gorai', city: 'Mumbai', pendingCount: 9 },
+  { id: 'R/N', name: 'Ward R/N — Dahisar', city: 'Mumbai', pendingCount: 6 },
+  { id: 'R/S', name: 'Ward R/S — Kandivali / Charkop', city: 'Mumbai', pendingCount: 11 },
+  { id: 'S', name: 'Ward S — Bhandup / Powai / Kanjurmarg', city: 'Mumbai', pendingCount: 12 },
+  { id: 'T', name: 'Ward T — Mulund / Nahur', city: 'Mumbai', pendingCount: 7 },
+  { id: 'K/E-2', name: 'Ward K/E-2 — Jogeshwari East', city: 'Mumbai', pendingCount: 8 },
+  { id: 'L-2', name: 'Ward L-2 — Chandivali / Asalpha', city: 'Mumbai', pendingCount: 9 },
+  { id: 'P/N-2', name: 'Ward P/N-2 — Dindoshi / Malad East', city: 'Mumbai', pendingCount: 10 },
 ];
 
 export const cases: PotholeCase[] = [

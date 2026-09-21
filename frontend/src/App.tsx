@@ -24,7 +24,7 @@ function AppContent() {
 
   // Municipal state
   const [municipalSection, setMunicipalSection] = useState<MunicipalNavSection>('dashboard');
-  const [selectedWard, setSelectedWard] = useState<string>('Ward 12 — Dadar West');
+  const selectedWard = 'Ward 12 — Dadar West';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
@@ -114,7 +114,6 @@ function AppContent() {
             activeSection={municipalSection}
             onSelectSection={setMunicipalSection}
             selectedWard={selectedWard}
-            onWardChange={setSelectedWard}
           >
             <MunicipalDashboardView activeSection={municipalSection} />
           </MunicipalLayout>
