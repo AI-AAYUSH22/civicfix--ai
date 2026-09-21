@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import hash_password
 from app.models.user import User, UserRole
 from app.models.ward import Ward, Road, Contractor
 from app.models.case import Case, CaseLocation
@@ -14,6 +15,16 @@ from app.models.evidence import EvidenceFile
 from app.models.verification import VerificationResult, VerificationCheck
 from app.models.audit import AuditLog
 from app.services.audit_service import log_audit_event
+
+
+# Demo-only credentials. Never reuse these outside local/demo environments.
+DEMO_PASSWORDS = {
+    "citizen": "Citizen@123",
+    "contractor": "Contractor@123",
+    "engineer": "Engineer@123",
+    "admin": "Admin@123",
+}
+
 
 def create_synthetic_demo_images(base_dir: str):
     """
@@ -74,8 +85,9 @@ def create_synthetic_demo_images(base_dir: str):
     return {
         "before": "uploads/demo/pothole_before_demo.jpg",
         "after_verified": "uploads/demo/pothole_after_verified_demo.jpg",
-        "after_unrepaired": "uploads/demo/pothole_after_unrepaired_demo.jpg"
+        "after_unrepaired": "uploads/demo/pothole_after_unrepaired_demo.jpg",
     }
+
 
 def seed_database(db: Session):
     """
@@ -90,35 +102,65 @@ def seed_database(db: Session):
     # Create synthetic images
     demo_images = create_synthetic_demo_images(settings.BASE_DIR)
 
-    # 1. Users
+    # 1. Users (passwords stored as bcrypt hashes)
     users = [
+        # Primary standard accounts
         User(
             email="citizen@civicfix.org",
             full_name="Aarav Sharma",
             role=UserRole.CITIZEN,
             phone="+91 98200 12345",
-            hashed_password="mock"
+            hashed_password=hash_password(DEMO_PASSWORDS["citizen"]),
         ),
         User(
             email="contractor@roadworks.in",
             full_name="RoadWorks Infrastructure Unit A",
             role=UserRole.CONTRACTOR,
             phone="+91 98201 67890",
-            hashed_password="mock"
+            hashed_password=hash_password(DEMO_PASSWORDS["contractor"]),
         ),
         User(
             email="engineer@mcgm.gov.in",
             full_name="Er. Rajesh Kulkarni",
             role=UserRole.WARD_ENGINEER,
             phone="+91 98202 34567",
-            hashed_password="mock"
+            hashed_password=hash_password(DEMO_PASSWORDS["engineer"]),
         ),
         User(
             email="admin@civicfix.org",
             full_name="CivicFix Admin",
             role=UserRole.ADMIN,
             phone="+91 98203 98765",
-            hashed_password="mock"
+            hashed_password=hash_password(DEMO_PASSWORDS["admin"]),
+        ),
+        # Aliases matching test suite expectations
+        User(
+            email="citizen@civicfix.ai",
+            full_name="Aarav Sharma (AI)",
+            role=UserRole.CITIZEN,
+            phone="+91 98200 12345",
+            hashed_password=hash_password(DEMO_PASSWORDS["citizen"]),
+        ),
+        User(
+            email="contractor@civicfix.ai",
+            full_name="RoadWorks Unit A (AI)",
+            role=UserRole.CONTRACTOR,
+            phone="+91 98201 67890",
+            hashed_password=hash_password(DEMO_PASSWORDS["contractor"]),
+        ),
+        User(
+            email="engineer@civicfix.ai",
+            full_name="Er. Rajesh Kulkarni (AI)",
+            role=UserRole.WARD_ENGINEER,
+            phone="+91 98202 34567",
+            hashed_password=hash_password(DEMO_PASSWORDS["engineer"]),
+        ),
+        User(
+            email="admin@civicfix.ai",
+            full_name="CivicFix Admin (AI)",
+            role=UserRole.ADMIN,
+            phone="+91 98203 98765",
+            hashed_password=hash_password(DEMO_PASSWORDS["admin"]),
         ),
     ]
     db.add_all(users)
@@ -203,7 +245,7 @@ def seed_database(db: Session):
         status="Verified",
         assigned_at=now - timedelta(days=4),
         deadline=now - timedelta(days=1),
-        completed_at=now - timedelta(hours=6)
+        completed_at=now - timedelta(hours=6),
     )
     db.add(wo1)
     db.flush()
@@ -220,7 +262,7 @@ def seed_database(db: Session):
         latitude=19.01825,
         longitude=72.84852,
         captured_at=now - timedelta(days=3),
-        validation_status="VALID"
+        validation_status="VALID",
     )
     ev_after1 = EvidenceFile(
         id="EV-1019-A",
@@ -234,7 +276,7 @@ def seed_database(db: Session):
         latitude=19.01829,
         longitude=72.84856,
         captured_at=now - timedelta(hours=6),
-        validation_status="VALID"
+        validation_status="VALID",
     )
     db.add_all([ev_before1, ev_after1])
     db.flush()
@@ -247,7 +289,7 @@ def seed_database(db: Session):
         status="VERIFIED",
         summary="Repair successfully verified by AI (Confidence: 94.5/100). All geospatial, perspective, and surface criteria passed.",
         started_at=now - timedelta(hours=6),
-        completed_at=now - timedelta(hours=6)
+        completed_at=now - timedelta(hours=6),
     )
     db.add(vr1)
     db.flush()
@@ -285,7 +327,7 @@ def seed_database(db: Session):
         priority="High",
         status="Needs Review",
         assigned_at=now - timedelta(days=2),
-        deadline=now + timedelta(days=1)
+        deadline=now + timedelta(days=1),
     )
     db.add(wo2)
     db.flush()
@@ -298,7 +340,7 @@ def seed_database(db: Session):
         status="NEEDS_REVIEW",
         summary="Flagged for Engineer Review (Score: 68.5/100). Camera angle varied significantly between BEFORE and AFTER captures.",
         started_at=now - timedelta(hours=3),
-        completed_at=now - timedelta(hours=3)
+        completed_at=now - timedelta(hours=3),
     )
     db.add(vr2)
     db.flush()
@@ -365,7 +407,7 @@ def seed_database(db: Session):
         priority="High",
         status="Assigned",
         assigned_at=now - timedelta(hours=14),
-        deadline=now + timedelta(days=2)
+        deadline=now + timedelta(days=2),
     ))
 
     # Case 6: REPAIRING (BEFORE captured, active on ground)
@@ -391,7 +433,7 @@ def seed_database(db: Session):
         priority="High",
         status="In Progress",
         assigned_at=now - timedelta(days=1),
-        deadline=now + timedelta(days=1)
+        deadline=now + timedelta(days=1),
     )
     db.add(wo_rep)
     db.flush()
@@ -407,7 +449,7 @@ def seed_database(db: Session):
         latitude=19.11204,
         longitude=72.87508,
         captured_at=now - timedelta(hours=4),
-        validation_status="VALID"
+        validation_status="VALID",
     ))
 
     # Log initial seed audit
