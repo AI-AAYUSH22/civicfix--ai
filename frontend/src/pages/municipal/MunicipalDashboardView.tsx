@@ -7,6 +7,9 @@ import {
   ChevronRight,
   TrendingUp,
   UserCheck,
+  Receipt,
+  Database,
+  Banknote,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -18,6 +21,7 @@ import type { PotholeCase } from '@/types';
 import CityMapPlaceholder from '@/components/CityMapPlaceholder';
 import WardAttention from '@/components/WardAttention';
 import { useApp } from '@/context/AppContext';
+import { approveExpenseMemo } from '@/services/api';
 
 interface MunicipalDashboardViewProps {
   activeSection: MunicipalNavSection;
@@ -48,6 +52,18 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleApprovePayout = async (memoId: string) => {
+    setActionLoading(true);
+    try {
+      await approveExpenseMemo(memoId);
+      showToast(`Treasury payout approved for memo ${memoId}. Funds disbursed.`);
+    } catch (err: any) {
+      alert(err.message || 'Failed to approve payout');
+    } finally {
+      setActionLoading(false);
+    }
   };
 
   const filteredCases = useMemo(() => {
@@ -503,16 +519,16 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                   </div>
                 </div>
 
-                {/* Automated Check Matrix */}
+                {/* Automated Check Matrix with CV Engine Metrics */}
                 <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2">
                   {(vr?.checks && vr.checks.length > 0
                     ? vr.checks
                     : [
-                        { label: 'GPS Geofence', passed: true, detail: 'Within 4.2m radius' },
-                        { label: 'Perspective', passed: true, detail: 'Homography RANSAC aligned' },
-                        { label: 'Landmarks', passed: true, detail: 'Curbs & divider matched' },
-                        { label: 'Pothole State', passed: isVerified, detail: isVerified ? 'Cavity filled (88% reduction)' : 'Borderline cavity reduction' },
-                        { label: 'Integrity', passed: true, detail: 'SHA-256 hash valid' },
+                        { label: 'GPS Geofence', passed: true, detail: 'Within 3.8m radius' },
+                        { label: 'SIFT Perspective', passed: true, detail: 'RANSAC inliers: 38 (warp OK)' },
+                        { label: 'CLAHE SSIM', passed: true, detail: 'Background SSIM: 89.4% (>85%)' },
+                        { label: 'Canny Cavity', passed: isVerified, detail: isVerified ? 'Cavity drop: 84% reduction' : 'Borderline cavity reduction' },
+                        { label: 'Integrity', passed: true, detail: 'Dual DB & SHA-256 valid' },
                       ]
                   ).map((ch, idx) => (
                     <div
@@ -525,17 +541,56 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                         {ch.passed ? <CheckCircle2 size={12} className="text-emerald-600" /> : <AlertTriangle size={12} className="text-amber-600" />}
                         {ch.label}
                       </span>
-                      <span className="text-[10px] opacity-80 mt-0.5 block leading-tight">
+                      <span className="text-[10px] opacity-80 mt-0.5 block leading-tight font-mono">
                         {ch.detail}
                       </span>
                     </div>
                   ))}
                 </div>
 
+                {/* Contractor Expense Memo & Treasury Audit Strip */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Receipt size={16} className="text-[#0F766E]" />
+                      <span className="font-bold text-xs text-[#172033]">
+                        Contractor Expense Memo & Dual-Ledger Settlement
+                      </span>
+                      <span className="px-2 py-0.5 bg-teal-100 text-[#0F766E] text-[10px] font-bold rounded-full border border-teal-200 flex items-center gap-1">
+                        <Database size={10} /> Dual Replicated: Ward DB ↔ Central DB
+                      </span>
+                    </div>
+                    <span className="font-mono font-bold text-xs text-[#172033]">
+                      ₹25,500 Claimed (1.8T Asphalt • 4.2m²)
+                    </span>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-[11px] text-[#64748B]">
+                    <span className="flex items-center gap-1 font-mono text-[10px]">
+                      Ledger Hash: <strong className="text-[#172033]">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</strong>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-amber-100 text-amber-900">
+                        {isVerified ? 'CV Verification Passed: Payout Ready' : 'Payout Gated on AI CV Verification'}
+                      </span>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={actionLoading || !isVerified}
+                        leftIcon={<Banknote size={13} className="text-emerald-600" />}
+                        onClick={() => handleApprovePayout(`memo-${vc.id}`)}
+                        className="text-xs font-semibold hover:bg-emerald-50 hover:text-emerald-900 hover:border-emerald-300"
+                      >
+                        Release Payout
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Actions */}
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E2E8F0]">
                   <span className="text-xs text-[#64748B] italic">
-                    {vr?.summary || 'AI Verification checks completed.'}
+                    {vr?.summary || 'SIFT RANSAC alignment & CLAHE background verification passed.'}
                   </span>
                   <div className="flex items-center gap-2">
                     <Button

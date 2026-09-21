@@ -6,16 +6,21 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
-from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal
+from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal, memos
 from app.seed.demo_data import seed_database
+from app.core.multi_db import init_contractor_databases
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
+init_contractor_databases()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup: ensure upload dirs exist and seed demo database
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    os.makedirs(os.path.join(settings.UPLOAD_DIR, "memos"), exist_ok=True)
+    os.makedirs(os.path.join(settings.UPLOAD_DIR, "social_ingest"), exist_ok=True)
+    init_contractor_databases()
     db = SessionLocal()
     try:
         seed_database(db)
@@ -52,6 +57,8 @@ app.include_router(work_orders.router, prefix=f"{settings.API_V1_STR}/work-order
 app.include_router(evidence.router, prefix=f"{settings.API_V1_STR}/evidence", tags=["Evidence"])
 app.include_router(verification.router, prefix=f"{settings.API_V1_STR}/verification", tags=["AI Verification"])
 app.include_router(municipal.router, prefix=f"{settings.API_V1_STR}/municipal", tags=["Municipal Dashboard"])
+app.include_router(memos.router, prefix=f"{settings.API_V1_STR}/memos", tags=["Expense Memos"])
+
 
 @app.get("/")
 def root():

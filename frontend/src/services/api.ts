@@ -233,3 +233,54 @@ export async function reviewVerification(
   if (!res.ok) throw new Error(`Failed to submit review: ${res.statusText}`);
   return res.json();
 }
+
+export async function ingestSocialComplaint(
+  rawText: string,
+  channel: 'REDDIT' | 'WHATSAPP',
+  reporterHandle: string = 'citizen_feed',
+  file?: File
+): Promise<any> {
+  const formData = new FormData();
+  formData.append('raw_text', rawText);
+  formData.append('channel', channel);
+  formData.append('reporter_handle', reporterHandle);
+  if (file) {
+    formData.append('photo', file);
+  }
+  const res = await fetch(`${API_BASE_URL}/cases/social-ingest`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to ingest social report');
+  }
+  return res.json();
+}
+
+export async function submitExpenseMemo(formData: FormData): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/memos`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to submit expense memo');
+  }
+  return res.json();
+}
+
+export async function getExpenseMemo(caseId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/memos/${caseId}`);
+  if (!res.ok) throw new Error(`Failed to fetch expense memo: ${res.statusText}`);
+  return res.json();
+}
+
+export async function approveExpenseMemo(memoId: string): Promise<any> {
+  const res = await fetch(`${API_BASE_URL}/memos/${memoId}/approve`, {
+    method: 'PATCH',
+  });
+  if (!res.ok) throw new Error(`Failed to approve payout: ${res.statusText}`);
+  return res.json();
+}
+

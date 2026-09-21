@@ -273,3 +273,84 @@ def validate_case(
     )
 
     return serialize_case(case)
+
+@router.post("/social-ingest", response_model=dict)
+async def ingest_social_report(
+    raw_text: str = Form(...),
+    channel: str = Form("REDDIT"), # REDDIT or WHATSAPP
+    reporter_handle: Optional[str] = Form("u/mumbai_commuter"),
+    photo: Optional[UploadFile] = File(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Module A: Ingests unstructured social posts from Reddit or WhatsApp.
+    Runs Two-Pass Geocoding NER to extract Neighborhood, Landmark, and confidence score.
+    """
+    from app.services.social_ingestion import parse_unstructured_social_post
+    parsed = parse_unstructured_social_post(raw_text, channel=channel)
+
+    latitude = parsed["latitude"]
+    longitude = parsed["longitude"]
+    landmark = parsed["landmark"]
+    neighborhood = parsed["neighborhood"]
+    confidence = parsed["confidence_score"]
+    status = "REPORTED" if confidence >= 0.70 else "REPORTED"
+
+    ward, road = find_nearest_ward_and_road(db, latitude, longitude)
+
+    new_case = Case(
+        description=f"[{channel} INGEST] {raw_text}",
+        severity="High" if "ruined" in raw_text.lower() or "dangerous" in raw_text.lower() else "Medium",
+        status=status,
+        title=f"Pothole reported on {channel}: {neighborhood}",
+        ward_id=ward.id if ward else None,
+        road_id=road.id if road else None,
+    )
+    db.add(new_case)
+    db.flush()
+
+    loc = CaseLocation(
+        case_id=new_case.id,
+        latitude=latitude,
+        longitude=longitude,
+        address=f"{neighborhood}, {ward.name if ward else 'Municipal Zone'}",
+        landmark=landmark
+    )
+    db.add(loc)
+
+    if photo and photo.filename:
+        rel_path, orig_name, file_hash = await save_upload_file(photo, subfolder="social_ingest")
+        ev = EvidenceFile(
+            case_id=new_case.id,
+            capture_type="CITIZEN",
+            storage_path=rel_path,
+            file_name=orig_name,
+            file_hash=file_hash,
+            latitude=latitude,
+            longitude=longitude,
+            validation_status="VALID"
+        )
+        db.add(ev)
+
+    db.commit()
+    db.refresh(new_case)
+
+    log_audit_event(
+        db=db,
+        action="SOCIAL_DATA_NORMALIZED",
+        entity_type="Case",
+        entity_id=new_case.id,
+        actor_name=reporter_handle,
+        actor_role="SOCIAL_INGESTION_BOT",
+        details={
+            "channel": channel,
+            "ner_confidence": confidence,
+            "geocoded_zone": neighborhood,
+            "landmark": landmark
+        }
+    )
+
+    serialized = serialize_case(new_case)
+    serialized["ner_analysis"] = parsed
+    return serialized
+

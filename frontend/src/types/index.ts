@@ -4,8 +4,12 @@ export type CivicStatus =
   | 'REPORTED'
   | 'VALIDATED'
   | 'ASSIGNED'
+  | 'GROUND_LOCKED'
   | 'REPAIRING'
   | 'VERIFICATION'
+  | 'REPAIRED_PENDING_VAL'
+  | 'FLAGGED_ANOMALY'
+  | 'VERIFIED_CLOSED'
   | 'VERIFIED'
   | 'NEEDS REVIEW'
   | 'NEEDS_REVIEW'
@@ -17,6 +21,7 @@ export type CivicStatus =
   | 'Reported'
   | 'Validated'
   | 'Assigned'
+  | 'Ground Locked'
   | 'Under Repair'
   | 'AI Verification'
   | 'Needs Review'
@@ -41,11 +46,29 @@ export interface VerificationCheck {
 }
 
 export interface RepairVerification {
-  status: 'Verified' | 'Needs Review' | 'Not Verified';
+  status: 'Verified' | 'Needs Review' | 'Not Verified' | 'VERIFIED_CLOSED' | 'FLAGGED_ANOMALY';
   score?: number; // 0-100
   checks: VerificationCheck[];
   summary?: string;
   verifiedAt?: string;
+}
+
+export interface ExpenseMemoItem {
+  id: string;
+  case_id: string;
+  work_order_id: string;
+  ward_id: string;
+  material_cost: number;
+  labor_cost: number;
+  machinery_cost: number;
+  total_amount: number;
+  asphalt_tonnage?: number;
+  patch_area_sqm?: number;
+  memo_hash: string;
+  payment_status: 'APPROVED' | 'HOLD_PENDING_CV' | 'DISBURSED' | 'SUBMITTED';
+  ai_verified: boolean;
+  submitted_at?: string;
+  approved_at?: string;
 }
 
 export interface PotholeCase {
@@ -67,6 +90,8 @@ export interface PotholeCase {
   afterImage?: string;
   verification?: RepairVerification;
   citizenName?: string;
+  channel?: 'APP' | 'WHATSAPP' | 'REDDIT';
+  expenseMemo?: ExpenseMemoItem;
 }
 
 export interface WorkOrder {
@@ -80,6 +105,7 @@ export interface WorkOrder {
   assignedDate: string;
   dueDate: string;
   assignedContractor: string;
+  contractorId?: string;
   beforePhotoCaptured?: boolean;
   afterPhotoCaptured?: boolean;
   coordinates?: { lat: number; lng: number };

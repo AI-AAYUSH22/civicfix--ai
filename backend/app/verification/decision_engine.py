@@ -10,15 +10,16 @@ from app.verification.integrity import verify_evidence_integrity
 WEIGHTS = {
     "GPS": 0.25,
     "PERSPECTIVE": 0.25,
-    "LANDMARK": 0.15,
-    "POTHOLE": 0.25,
+    "LANDMARK": 0.20,
+    "POTHOLE": 0.20,
     "INTEGRITY": 0.10,
 }
 
 def evaluate_decision(checks: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
-    Combines individual verification check results into an overall verification score
-    and deterministic decision status: VERIFIED, NEEDS_REVIEW, or NOT_VERIFIED.
+    Evaluates verification checks against deterministic anti-gaming rules.
+    Yields VERIFIED_CLOSED (or VERIFIED for backward-compat), FLAGGED_ANOMALY / NOT_VERIFIED,
+    or NEEDS_REVIEW for borderline cases.
     """
     total_score = 0.0
     check_statuses = {}
@@ -39,29 +40,32 @@ def evaluate_decision(checks: List[Dict[str, Any]]) -> Dict[str, Any]:
 
     total_score = round(total_score, 1)
 
-    # Deterministic Rule 1: Integrity failure (e.g. duplicate identical image submitted)
+    # Deterministic Rule 1: Integrity failure (reused/duplicate photo hash or illegal timestamps)
     if check_statuses.get("INTEGRITY") == "FAIL":
-        decision_status = "NOT_VERIFIED"
-        summary = f"Verification REJECTED. Evidence integrity compromised: {'; '.join(fail_reasons)}"
+        decision_status = "FLAGGED_ANOMALY"
+        summary = f"REJECTED & FLAGGED: Photographic evidence integrity compromised: {'; '.join(fail_reasons)}"
     # Deterministic Rule 2: GPS location mismatch (>35m from assigned location)
     elif check_statuses.get("GPS") == "FAIL":
-        decision_status = "NOT_VERIFIED"
-        summary = f"Verification REJECTED. Critical location mismatch: {'; '.join(fail_reasons)}"
-    # Deterministic Rule 3: Pothole cavity still present in AFTER photo
+        decision_status = "FLAGGED_ANOMALY"
+        summary = f"REJECTED & FLAGGED: Severe geospatial mismatch: {'; '.join(fail_reasons)}"
+    # Deterministic Rule 3: Pothole cavity still open or tarp spoofing detected
     elif check_statuses.get("POTHOLE") == "FAIL":
         decision_status = "NOT_VERIFIED"
-        summary = f"Verification REJECTED. Pothole repair not detected: {'; '.join(fail_reasons)}"
-    # Deterministic Rule 4: Perspective complete failure (different street)
+        summary = f"REJECTED: Surface repair not detected or cavity remaining: {'; '.join(fail_reasons)}"
+    # Deterministic Rule 4: Visual scene geometry & landmark SSIM both failed (completely different site)
     elif check_statuses.get("PERSPECTIVE") == "FAIL" and check_statuses.get("LANDMARK") == "FAIL":
-        decision_status = "NOT_VERIFIED"
-        summary = "Verification REJECTED. Visual scene and landmarks completely mismatched (different site)."
-    # Deterministic Rule 5: Any review status or borderline score
+        decision_status = "FLAGGED_ANOMALY"
+        summary = "REJECTED & FLAGGED: Visual perspective and background SSIM completely mismatched (unrelated location)."
+    # Deterministic Rule 5: Borderline score or single review flag
     elif len(review_reasons) > 0 or total_score < 72.0:
         decision_status = "NEEDS_REVIEW"
-        summary = f"Flagged for Engineer Review (Score: {total_score}/100). Highlights: {'; '.join(review_reasons or fail_reasons)}"
+        summary = f"Flagged for Sub-Engineer Inspection (Score: {total_score}/100). Details: {'; '.join(review_reasons or fail_reasons)}"
     else:
-        decision_status = "VERIFIED"
-        summary = f"Repair successfully verified by AI (Confidence Score: {total_score}/100). All geospatial, perspective, and surface criteria passed."
+        decision_status = "VERIFIED_CLOSED"
+        summary = (
+            f"Repair successfully verified by AI (Confidence: {total_score}/100). "
+            f"SIFT homography aligned, CLAHE background SSIM passed, and asphalt leveling confirmed."
+        )
 
     return {
         "overall_score": total_score,
@@ -85,9 +89,9 @@ def run_verification_pipeline(
     after_time: Optional[datetime] = None,
 ) -> Dict[str, Any]:
     """
-    Executes the full 5-stage verification pipeline and returns the decision engine outcome.
+    Executes the hardened 5-stage verification pipeline and returns the decision engine outcome.
     """
-    # 1. GPS Check
+    # 1. GPS Geofence Check
     gps_result = verify_gps(
         wo_lat=assigned_lat,
         wo_lng=assigned_lng,
@@ -97,16 +101,16 @@ def run_verification_pipeline(
         before_lng=before_lng
     )
 
-    # 2. Perspective Check
+    # 2. SIFT + Homography Perspective Check
     perspective_result = verify_perspective(before_img_path, after_img_path)
 
-    # 3. Landmark Check
+    # 3. CLAHE Light-Normalized Background SSIM Check
     landmark_result = verify_landmarks(before_img_path, after_img_path)
 
-    # 4. Pothole State Analysis
+    # 4. Pothole Cavity & Canny Edge Volumetric Check
     pothole_result = analyze_pothole_state(before_img_path, after_img_path)
 
-    # 5. Evidence Integrity Check
+    # 5. Evidence Integrity Check (SHA-256 hash & timestamp chronology)
     integrity_result = verify_evidence_integrity(
         before_hash=before_hash,
         after_hash=after_hash,

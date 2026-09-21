@@ -41,6 +41,13 @@ build/
 .vite/
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Uploads
+backend/uploads/complaints/
+backend/uploads/work_orders/
+backend/uploads/memos/
 
 # OS files
 .DS_Store

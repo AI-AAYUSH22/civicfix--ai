@@ -28,6 +28,7 @@ interface AppContextType {
   contractors: any[];
   refreshData: () => Promise<void>;
   submitComplaint: (formData: FormData) => Promise<ApiCase>;
+  ingestSocialHandler: (rawText: string, channel: 'REDDIT' | 'WHATSAPP', file?: File) => Promise<any>;
   validateCaseHandler: (caseId: string, action: 'VALIDATE' | 'REJECT', notes?: string) => Promise<void>;
   assignWorkOrderHandler: (caseId: string, contractorId: string, priority?: string) => Promise<void>;
   submitEvidenceHandler: (
@@ -37,12 +38,14 @@ interface AppContextType {
     lat: number,
     lng: number
   ) => Promise<any>;
+  submitExpenseMemoHandler: (formData: FormData) => Promise<any>;
   reviewVerificationHandler: (
     workOrderId: string,
     decision: 'APPROVE' | 'REJECT',
     notes?: string
   ) => Promise<void>;
 }
+
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
@@ -200,6 +203,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return result;
   };
 
+  const ingestSocialHandler = async (rawText: string, channel: 'REDDIT' | 'WHATSAPP', file?: File) => {
+    const res = await (await import('@/services/api')).ingestSocialComplaint(rawText, channel, channel === 'REDDIT' ? 'u/mumbai_citizen' : '+91 98200 99999', file);
+    await refreshData();
+    return res;
+  };
+
+  const submitExpenseMemoHandler = async (formData: FormData) => {
+    const res = await (await import('@/services/api')).submitExpenseMemo(formData);
+    await refreshData();
+    return res;
+  };
+
   const reviewVerificationHandler = async (
     workOrderId: string,
     decision: 'APPROVE' | 'REJECT',
@@ -221,15 +236,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         contractors,
         refreshData,
         submitComplaint,
+        ingestSocialHandler,
         validateCaseHandler,
         assignWorkOrderHandler,
         submitEvidenceHandler,
+        submitExpenseMemoHandler,
         reviewVerificationHandler,
       }}
     >
       {children}
     </AppContext.Provider>
   );
+
 };
 
 export function useApp(): AppContextType {

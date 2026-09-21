@@ -1,14 +1,25 @@
 from typing import Set, Dict
 
+# Strict 6-stage lifecycle specified in the hardened blueprint:
+# 1. REPORTED          - Citizen/Bot/Scraper logs ticket. Initial loose geofence bounded.
+# 2. ASSIGNED          - Mapped to ward contractor ledger.
+# 3. GROUND_LOCKED     - Contractor snaps "Before" photo on-site. Telemetry locked to contractor device.
+# 4. REPAIRED_PENDING_VAL - Contractor submits "After" photo. Initiates 3-stage automated CV verification.
+# 5. FLAGGED_ANOMALY   - CV checks fail. Contractor score frozen. Alert triggered on Ward Engineer dashboard.
+# 6. VERIFIED_CLOSED   - CV checks pass completely. Settlement ledger & payment released.
 VALID_TRANSITIONS: Dict[str, Set[str]] = {
-    "REPORTED": {"VALIDATED", "REJECTED", "CLOSED"},
+    "REPORTED": {"VALIDATED", "ASSIGNED", "REJECTED", "CLOSED"},
     "VALIDATED": {"ASSIGNED", "REJECTED"},
-    "ASSIGNED": {"REPAIRING", "VALIDATED"},
-    "REPAIRING": {"VERIFICATION", "ASSIGNED"},
-    "VERIFICATION": {"VERIFIED", "NEEDS_REVIEW", "NOT_VERIFIED"},
-    "NEEDS_REVIEW": {"VERIFIED", "NOT_VERIFIED", "REPAIRING"},
-    "NOT_VERIFIED": {"REPAIRING", "ASSIGNED", "CLOSED"},
-    "VERIFIED": {"CLOSED"},
+    "ASSIGNED": {"GROUND_LOCKED", "REPAIRING", "VALIDATED"},
+    "GROUND_LOCKED": {"REPAIRED_PENDING_VAL", "REPAIRING", "ASSIGNED"},
+    "REPAIRING": {"REPAIRED_PENDING_VAL", "VERIFICATION", "GROUND_LOCKED", "ASSIGNED"},
+    "VERIFICATION": {"VERIFIED", "NEEDS_REVIEW", "NOT_VERIFIED", "VERIFIED_CLOSED", "FLAGGED_ANOMALY"},
+    "REPAIRED_PENDING_VAL": {"VERIFIED_CLOSED", "FLAGGED_ANOMALY", "VERIFIED", "NEEDS_REVIEW", "NOT_VERIFIED"},
+    "NEEDS_REVIEW": {"VERIFIED_CLOSED", "FLAGGED_ANOMALY", "VERIFIED", "NOT_VERIFIED", "GROUND_LOCKED", "REPAIRING"},
+    "NOT_VERIFIED": {"FLAGGED_ANOMALY", "GROUND_LOCKED", "REPAIRING", "ASSIGNED", "CLOSED"},
+    "FLAGGED_ANOMALY": {"GROUND_LOCKED", "REPAIRING", "ASSIGNED", "VERIFIED_CLOSED", "CLOSED"},
+    "VERIFIED": {"VERIFIED_CLOSED", "CLOSED"},
+    "VERIFIED_CLOSED": set(),
     "REJECTED": set(),
     "CLOSED": set(),
 }

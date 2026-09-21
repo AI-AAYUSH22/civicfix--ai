@@ -8,6 +8,7 @@ import {
   UploadCloud,
   Crosshair,
   Sparkles,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -24,7 +25,7 @@ interface ContractorHomeProps {
 export const ContractorHome: React.FC<ContractorHomeProps> = ({
   filter = 'all',
 }) => {
-  const { workOrders, submitEvidenceHandler } = useApp();
+  const { workOrders, submitEvidenceHandler, submitExpenseMemoHandler } = useApp();
 
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
@@ -35,11 +36,53 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
   const [verificationResult, setVerificationResult] = useState<any | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Expense Memo State
+  const [memoModalOpen, setMemoModalOpen] = useState(false);
+  const [selectedMemoOrder, setSelectedMemoOrder] = useState<WorkOrder | null>(null);
+  const [materialCost, setMaterialCost] = useState('14500');
+  const [laborCost, setLaborCost] = useState('6200');
+  const [machineryCost, setMachineryCost] = useState('4800');
+  const [asphaltTonnage, setAsphaltTonnage] = useState('1.8');
+  const [patchAreaSqm, setPatchAreaSqm] = useState('4.2');
+  const [submittingMemo, setSubmittingMemo] = useState(false);
+  const [memoSyncResult, setMemoSyncResult] = useState<any | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleOpenMemo = (order: WorkOrder) => {
+    setSelectedMemoOrder(order);
+    setMemoSyncResult(null);
+    setMemoModalOpen(true);
+  };
+
+  const handleSubmitMemo = async () => {
+    if (!selectedMemoOrder) return;
+    setSubmittingMemo(true);
+    try {
+      const formData = new FormData();
+      formData.append('case_id', selectedMemoOrder.caseId || selectedMemoOrder.id);
+      formData.append('work_order_id', selectedMemoOrder.id);
+      formData.append('ward_id', selectedMemoOrder.ward || 'w12');
+      formData.append('contractor_id', selectedMemoOrder.contractorId || 'contractor-alpha');
+      formData.append('material_cost', materialCost);
+      formData.append('labor_cost', laborCost);
+      formData.append('machinery_cost', machineryCost);
+      formData.append('asphalt_tonnage', asphaltTonnage);
+      formData.append('patch_area_sqm', patchAreaSqm);
+
+      const res = await submitExpenseMemoHandler(formData);
+      setMemoSyncResult(res);
+      showToast('Expense Memo dual-written to Municipal & Contractor DB!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit memo');
+    } finally {
+      setSubmittingMemo(false);
+    }
   };
 
   const filteredOrders = workOrders.filter((order) => {
@@ -186,7 +229,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                   <span>Priority: <strong className="text-[#172033]">{order.priority}</strong></span>
                 </div>
 
-                {/* Evidence Actions Strip */}
+                {/* Evidence & Billing Actions Strip */}
                 <div className="grid grid-cols-2 gap-2 pt-1">
                   <Button
                     variant={hasBefore ? 'outline' : 'primary'}
@@ -209,11 +252,24 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                     {hasAfter ? 'AFTER Captured ✓' : '2. Capture AFTER'}
                   </Button>
                 </div>
+
+                {hasAfter && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    fullWidth
+                    onClick={() => handleOpenMemo(order)}
+                    className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs mt-1"
+                  >
+                    🧾 3. Submit Expense Memo & Bill
+                  </Button>
+                )}
               </Card>
             );
           })
         )}
       </div>
+
 
       {/* In-App Camera / Evidence Capture Modal */}
       {captureModalOpen && selectedOrder && (
@@ -328,6 +384,155 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </p>
               </div>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Expense Memo & Dual-Database Sync Modal */}
+      {memoModalOpen && selectedMemoOrder && (
+        <Modal
+          isOpen={memoModalOpen}
+          onClose={() => setMemoModalOpen(false)}
+          title="Contractor Expense Memo & Billing Submission"
+          description={`Order ${selectedMemoOrder.id} • Ward ${selectedMemoOrder.ward} • Linked: ${selectedMemoOrder.caseId}`}
+          footer={
+            <div className="flex items-center justify-between w-full">
+              <Button variant="secondary" size="sm" onClick={() => setMemoModalOpen(false)}>
+                Close
+              </Button>
+              {!memoSyncResult && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={submittingMemo}
+                  leftIcon={<UploadCloud size={14} />}
+                  onClick={handleSubmitMemo}
+                >
+                  {submittingMemo ? 'Dual-Syncing to DBs...' : 'Submit & Dual-Replicate Memo'}
+                </Button>
+              )}
+            </div>
+          }
+        >
+          <div className="space-y-4 text-xs">
+            {/* Dual DB Status Banner */}
+            <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database size={16} className="text-[#0F766E]" />
+                <div>
+                  <p className="font-bold text-[#172033]">Dual-Database Multi-Tenant Replication</p>
+                  <p className="text-[11px] text-[#64748B]">
+                    Ward {selectedMemoOrder.ward} ➔ Municipal Central DB & Contractor Ward DB
+                  </p>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 bg-teal-100 text-teal-800 text-[10px] font-bold rounded-full border border-teal-300">
+                Synchronous Write
+              </span>
+            </div>
+
+            {/* Itemized Memo Form */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-bold text-[#172033] mb-1">
+                  Bitumen Asphalt (Tons)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={asphaltTonnage}
+                  onChange={(e) => setAsphaltTonnage(e.target.value)}
+                  disabled={!!memoSyncResult}
+                  className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2 text-xs text-[#172033] font-mono focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#172033] mb-1">
+                  Compacted Area (sq.m)
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={patchAreaSqm}
+                  onChange={(e) => setPatchAreaSqm(e.target.value)}
+                  disabled={!!memoSyncResult}
+                  className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2 text-xs text-[#172033] font-mono focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#172033] mb-1">
+                  Bitumen & Aggregate Cost (₹)
+                </label>
+                <input
+                  type="number"
+                  value={materialCost}
+                  onChange={(e) => setMaterialCost(e.target.value)}
+                  disabled={!!memoSyncResult}
+                  className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2 text-xs text-[#172033] font-mono focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#172033] mb-1">
+                  Labor & Compactor Crew (₹)
+                </label>
+                <input
+                  type="number"
+                  value={laborCost}
+                  onChange={(e) => setLaborCost(e.target.value)}
+                  disabled={!!memoSyncResult}
+                  className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2 text-xs text-[#172033] font-mono focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-[11px] font-bold text-[#172033] mb-1">
+                  Roller, Paver & Machinery Rental (₹)
+                </label>
+                <input
+                  type="number"
+                  value={machineryCost}
+                  onChange={(e) => setMachineryCost(e.target.value)}
+                  disabled={!!memoSyncResult}
+                  className="w-full bg-white border border-[#CBD5E1] rounded-lg p-2 text-xs text-[#172033] font-mono focus:outline-none focus:ring-1 focus:ring-[#0F766E]"
+                />
+              </div>
+            </div>
+
+            {/* Total Calculation */}
+            <div className="p-3 bg-slate-50 border border-[#E2E8F0] rounded-xl flex items-center justify-between">
+              <div>
+                <span className="text-[11px] text-[#64748B] block">Total Claim Amount</span>
+                <span className="font-bold text-base text-[#172033]">
+                  ₹{(Number(materialCost) + Number(laborCost) + Number(machineryCost)).toLocaleString('en-IN')}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-amber-700 font-semibold block">Payout Condition</span>
+                <span className="text-[11px] text-[#64748B]">Auto-releases on CV Verified Close</span>
+              </div>
+            </div>
+
+            {/* Sync Receipt if submitted */}
+            {memoSyncResult && (
+              <div className="p-4 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2">
+                <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                  <CheckCircle2 size={16} className="text-emerald-600" />
+                  <span>Dual-Database Replication Successful</span>
+                </div>
+                <p className="text-[11px] text-emerald-900 leading-relaxed">
+                  Memo ID: <span className="font-mono font-bold">{memoSyncResult.id}</span>
+                </p>
+                <div className="bg-white/80 p-2.5 rounded-lg border border-emerald-200 font-mono text-[10px] text-slate-700 space-y-1">
+                  <p>Central Municipal DB: <span className="text-emerald-700 font-bold">STORED</span> (civicfix_municipal.db)</p>
+                  <p>Contractor Ward DB: <span className="text-emerald-700 font-bold">STORED</span> (contractor_ward_{selectedMemoOrder.ward.toLowerCase()}.db)</p>
+                  <p>SHA-256 Digest: <span className="text-slate-600 truncate block">{memoSyncResult.memo_hash}</span></p>
+                  <p>Payment Status: <span className="text-amber-700 font-bold">{memoSyncResult.payment_status}</span></p>
+                </div>
+              </div>
+            )}
           </div>
         </Modal>
       )}
