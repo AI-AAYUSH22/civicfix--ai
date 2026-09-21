@@ -36,6 +36,11 @@ export const CitizenHome: React.FC = () => {
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Camera & GPS State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   // Active cases reported by citizens
   const activeCases = cases.filter((c) => c.status !== 'CLOSED');
@@ -131,6 +136,98 @@ export const CitizenHome: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+    } catch (err) {
+      console.error('Camera failed', err);
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+  };
+
+  const captureLivePhoto = async () => {
+    if (!videoRef.current || !canvasRef.current) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // Draw raw frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Geo-Watermark
+    const barHeight = 100;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+    
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(`CivicFix CITIZEN REPORT`, 20, canvas.height - 65);
+    
+    ctx.font = '18px monospace';
+    ctx.fillStyle = '#14B8A6';
+    ctx.fillText(`GPS: ${lat.toFixed(6)}°N, ${lng.toFixed(6)}°E`, 20, canvas.height - 35);
+    
+    ctx.fillStyle = '#94A3B8';
+    const timestamp = new Date().toLocaleString();
+    ctx.fillText(`${timestamp} • ${landmark}, ${address}`, 20, canvas.height - 10);
+    
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], `citizen_report_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      setSelectedFile(file);
+      setPreviewUrl(URL.createObjectURL(file));
+      stopCamera();
+      
+      // Trigger AI
+      setAiResult(null);
+      setAnalyzingPhoto(true);
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        const res = await fetch('http://localhost:8000/api/v1/cases/analyze-photo', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAiResult(data);
+          if (data.is_pothole && data.confidence >= 50) {
+            setReportStep(3);
+          }
+        }
+      } catch (err) {
+        console.error('AI Analysis failed:', err);
+      } finally {
+        setAnalyzingPhoto(false);
+      }
+    }, 'image/jpeg', 0.9);
+  };
+  
+  // Intercept changing step 2 to start camera
+  const goToStep2 = () => {
+    setReportStep(2);
+    startCamera();
+  };
+
+  const closeReportModal = () => {
+    stopCamera();
+    setReportModalOpen(false);
   };
 
   return (
@@ -275,7 +372,7 @@ export const CitizenHome: React.FC = () => {
       {/* 5-Step Report Modal */}
       <Modal
         isOpen={reportModalOpen}
-        onClose={() => setReportModalOpen(false)}
+        onClose={closeReportModal}
         title={
           reportStep === 1
             ? 'Report a Pothole'
@@ -295,16 +392,16 @@ export const CitizenHome: React.FC = () => {
         footer={
           reportStep === 1 ? (
             <>
-              <Button variant="secondary" size="sm" onClick={() => setReportModalOpen(false)}>
+              <Button variant="secondary" size="sm" onClick={closeReportModal}>
                 Cancel
               </Button>
-              <Button variant="primary" size="sm" onClick={() => setReportStep(2)}>
+              <Button variant="primary" size="sm" onClick={goToStep2}>
                 Take Photo
               </Button>
             </>
           ) : reportStep === 2 ? (
             <>
-              <Button variant="secondary" size="sm" onClick={() => setReportStep(1)}>
+              <Button variant="secondary" size="sm" onClick={() => { stopCamera(); setReportStep(1); }}>
                 Back
               </Button>
               <Button 
@@ -349,7 +446,7 @@ export const CitizenHome: React.FC = () => {
               variant="primary"
               size="sm"
               fullWidth
-              onClick={() => setReportModalOpen(false)}
+              onClick={closeReportModal}
             >
               Track Case {createdCase?.id || 'CF-New'}
             </Button>
@@ -380,9 +477,30 @@ export const CitizenHome: React.FC = () => {
                   <img src={previewUrl} alt="Captured" className="w-full h-full object-cover" />
                 ) : (
                   <>
-                    <Camera size={36} className="text-teal-400 mb-2 animate-pulse" />
-                    <span className="text-xs font-medium">Camera Viewfinder</span>
-                    <span className="text-[10px] text-slate-400">Tap below to capture live photo</span>
+                    <video 
+                      ref={videoRef} 
+                      autoPlay 
+                      playsInline 
+                      muted 
+                      className="w-full h-full object-cover absolute inset-0 z-0"
+                    />
+                    
+                    <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+                      <Camera size={36} className="text-teal-400 mb-2 animate-pulse" />
+                      <span className="text-xs font-medium">Camera Viewfinder</span>
+                    </div>
+
+                    <div className="absolute bottom-4 left-0 right-0 flex justify-center z-20">
+                      <button
+                        type="button"
+                        onClick={captureLivePhoto}
+                        className="w-14 h-14 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-white" />
+                      </button>
+                    </div>
+                    
+                    <canvas ref={canvasRef} className="hidden" />
                   </>
                 )}
               </div>
