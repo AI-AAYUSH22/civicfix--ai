@@ -422,7 +422,7 @@ export const CitizenHome: React.FC = () => {
                   </div>
                   {(!aiResult.is_pothole || aiResult.confidence < 50) && (
                     <p className="text-red-600 mt-2 pt-2 border-t border-red-200 font-semibold text-center text-xs">
-                      Submission Blocked: Image does not meet pothole criteria. Please upload a clearer photo.
+                      Submission Blocked: Please upload a proper pothole. The AI could not verify this image.
                     </p>
                   )}
                 </div>
