@@ -17,7 +17,7 @@ import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/caseUtils';
 
 export const CitizenHome: React.FC = () => {
-  const { cases, submitComplaint, ingestSocialHandler } = useApp();
+  const { cases, submitComplaint } = useApp();
 
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [reportStep, setReportStep] = useState<number>(1);
@@ -32,32 +32,8 @@ export const CitizenHome: React.FC = () => {
   const [createdCase, setCreatedCase] = useState<any | null>(null);
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 4000);
-  };
-
-  const handleSocialSimulate = async (channel: 'WHATSAPP' | 'REDDIT') => {
-    const rawPost =
-      channel === 'REDDIT'
-        ? 'Another tyre ruined near the corner of crossroad 3 and 4 in Bandra West, right past the Starbucks.'
-        : 'Emergency report: Huge crater pothole on Gokhale Road near Plaza Cinema Dadar. Causing bikes to skid.';
-    try {
-      const res = await ingestSocialHandler(rawPost, channel);
-      showToast(
-        `✓ ${channel} post normalized! Case ${res.id} created via Two-Pass NER (Confidence: ${Math.round(
-          (res.ner_analysis?.confidence_score || 0.85) * 100
-        )}%)`
-      );
-    } catch (e: any) {
-      alert(e.message || 'Social ingest failed');
-    }
-  };
-
 
   // Active cases reported by citizens
   const activeCases = cases.filter((c) => c.status !== 'CLOSED');
@@ -121,13 +97,6 @@ export const CitizenHome: React.FC = () => {
 
   return (
     <div className="space-y-5 relative">
-      {toastMessage && (
-        <div className="fixed top-16 right-4 left-4 md:left-auto md:w-96 z-50 bg-[#172033] text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 border border-teal-500/40">
-          <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-          <span className="leading-snug">{toastMessage}</span>
-        </div>
-      )}
-
       {/* Primary Action Card: Report a Pothole */}
 
       <div className="bg-gradient-to-br from-[#0F766E] to-[#115E59] rounded-2xl p-5 text-white shadow-lg relative overflow-hidden">
@@ -150,31 +119,15 @@ export const CitizenHome: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-3 gap-2 pt-1">
+          <div className="pt-2">
             <Button
               variant="secondary"
-              size="sm"
-              leftIcon={<Camera size={14} className="text-[#0F766E]" />}
+              size="md"
+              leftIcon={<Camera size={16} className="text-[#0F766E]" />}
               onClick={handleOpenReport}
-              className="bg-white text-[#0F766E] hover:bg-slate-50 font-bold border-none shadow-md text-[11px] py-2 px-1"
+              className="bg-white text-[#0F766E] hover:bg-slate-50 font-bold border-none shadow-md text-xs py-2.5 px-6"
             >
-              Citizen App
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleSocialSimulate('WHATSAPP')}
-              className="bg-emerald-800/90 text-white hover:bg-emerald-900 font-bold border border-emerald-500/50 shadow-md text-[11px] py-2 px-1"
-            >
-              💬 WhatsApp
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => handleSocialSimulate('REDDIT')}
-              className="bg-orange-700/90 text-white hover:bg-orange-800 font-bold border border-orange-500/50 shadow-md text-[11px] py-2 px-1"
-            >
-              🤖 Reddit Bot
+              Report Pothole Now
             </Button>
           </div>
         </div>
