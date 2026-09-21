@@ -48,8 +48,28 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
             
             circularity = 4 * np.pi * (area / (perimeter * perimeter))
             
-            # Potholes aren't perfectly circular, they are rough. 
-            # We look for a balance. A score combining area relative to image and some roughness.
+            # STRICT CIRCULARITY CHECK
+            # Potholes aren't perfect circles, but they aren't completely jagged lines either.
+            if circularity < 0.35:
+                continue
+
+            # STRICT COLOR CHECK (Must be dark and low saturation - typical asphalt colors)
+            # Create a mask for this contour to calculate mean color
+            mask = np.zeros(gray.shape, dtype=np.uint8)
+            cv2.drawContours(mask, [cnt], -1, 255, -1)
+            
+            # Convert original image to HSV to check saturation
+            hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            mean_val = cv2.mean(hsv_img, mask=mask)
+            # mean_val is (H, S, V, _)
+            mean_saturation = mean_val[1]
+            mean_brightness = mean_val[2]
+            
+            # If it's highly saturated (colorful) or very bright, it's not a pothole
+            if mean_saturation > 80 or mean_brightness > 150:
+                continue
+            
+            # Score combining area relative to image and circularity.
             score = (area / total_pixels) * 100 + (circularity * 50)
             
             if score > max_score:
@@ -59,10 +79,10 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
 
         if best_contour is not None:
             # We found a candidate pothole
-            # Base confidence starts high because we found a significant anomaly
-            confidence = min(98.5, 85.0 + (max_score * 0.5))
+            # Base confidence starts high because we found a significant structural anomaly
+            confidence = min(99.0, 85.0 + (max_score * 0.5))
             
-            # Estimate size: Assume standard camera height, scale the pixel area to a realistic range
+            # Estimate size: scale the pixel area to a realistic range
             area_ratio = best_area / total_pixels
             estimated_size_sqm = round(area_ratio * 3.5, 2)
             
@@ -73,26 +93,17 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
                 "is_pothole": True,
                 "confidence": round(confidence, 1),
                 "estimated_size_sqm": estimated_size_sqm,
-                "message": "High-confidence structural anomaly detected."
+                "message": "High-confidence structural anomaly detected matching asphalt deterioration."
             }
         else:
-            # Fallback for demo: if no clear contour, analyze overall image variance (roughness)
-            variance = np.var(gray)
-            if variance > 1000:
-                # Highly textured surface, likely road damage
-                return {
-                    "is_pothole": True,
-                    "confidence": 82.4,
-                    "estimated_size_sqm": 0.35,
-                    "message": "Moderate confidence: High surface roughness detected."
-                }
-            else:
-                return {
-                    "is_pothole": False,
-                    "confidence": 35.0,
-                    "estimated_size_sqm": 0.0,
-                    "message": "Low confidence: Surface appears uniform."
-                }
+            # If no valid contour found, fail strictly. We removed the high-variance fallback 
+            # so colourful/jagged things (like dinosaurs) don't get through by accident.
+            return {
+                "is_pothole": False,
+                "confidence": 15.0,
+                "estimated_size_sqm": 0.0,
+                "message": "Low confidence: Target lacks characteristic circularity or asphalt color profile."
+            }
     except Exception as e:
         # Fallback to prevent breaking the flow
         return {
