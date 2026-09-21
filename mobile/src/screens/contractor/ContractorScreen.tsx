@@ -104,11 +104,21 @@ export const ContractorScreen: React.FC<{ onBack: () => void }> = ({ onBack }) =
       formData.append('capture_type', captureType);
       formData.append('latitude', String(loc.coords.latitude));
       formData.append('longitude', String(loc.coords.longitude));
-      formData.append('file', {
-        uri: imageUri,
-        name: filename,
-        type: 'image/jpeg',
-      } as any);
+
+      if (imageUri.startsWith('data:') || imageUri.startsWith('blob:')) {
+        const resBlob = await fetch(imageUri);
+        const blob = await resBlob.blob();
+        formData.append('file', blob, `${captureType.toLowerCase()}.jpg`);
+      } else {
+        const filename = imageUri.split('/').pop() || `${captureType.toLowerCase()}.jpg`;
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : 'image/jpeg';
+        formData.append('file', {
+          uri: imageUri,
+          name: filename,
+          type,
+        } as any);
+      }
 
       const res = await uploadMobileEvidence(formData);
 

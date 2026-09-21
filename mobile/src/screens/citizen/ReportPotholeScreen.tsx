@@ -29,6 +29,37 @@ export const ReportPotholeScreen: React.FC<{ onBack: () => void }> = ({ onBack }
   const [submitting, setSubmitting] = useState(false);
   const [successReceipt, setSuccessReceipt] = useState<any | null>(null);
 
+  const fetchGPSAutomatically = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      const newLat = loc.coords.latitude;
+      const newLng = loc.coords.longitude;
+      setLocationCoords({ lat: newLat, lng: newLng });
+
+      // Reverse geocode to suggest landmark/address
+      try {
+        const reverse = await Location.reverseGeocodeAsync({ latitude: newLat, longitude: newLng });
+        if (reverse && reverse[0]) {
+          const rev = reverse[0];
+          const detectedStreet = [rev.street, rev.district, rev.city].filter(Boolean).join(', ');
+          if (detectedStreet) setAddress(detectedStreet);
+          if (rev.name && rev.name !== rev.street) setLandmark(`Near ${rev.name}`);
+        }
+      } catch {
+        // reverse geocode optional
+      }
+    } catch {
+      // ignore GPS error on fallback
+    } finally {
+      setLocating(false);
+    }
+  };
+
   const handleCapturePhoto = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -45,27 +76,29 @@ export const ReportPotholeScreen: React.FC<{ onBack: () => void }> = ({ onBack }
 
     if (!result.canceled && result.assets[0]) {
       setImageUri(result.assets[0].uri);
+      // Auto-fetch GPS as soon as photo is taken
+      fetchGPSAutomatically();
     }
   };
 
-  const handleFetchGPS = async () => {
-    setLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('GPS Permission', 'Location permission denied. Using fallback coordinates.');
-        return;
-      }
-      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      setLocationCoords({
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-      });
-      Alert.alert('GPS Locked', `Precision: ±${Math.round(loc.coords.accuracy || 3)}m`);
-    } catch (err: any) {
-      Alert.alert('GPS Error', err.message || 'Could not lock GPS');
-    } finally {
-      setLocating(false);
+  const handleSelectFromGallery = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permission Denied', 'Gallery access is required.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      setImageUri(result.assets[0].uri);
+      // Auto-fetch GPS as soon as photo is selected
+      fetchGPSAutomatically();
     }
   };
 
@@ -80,17 +113,25 @@ export const ReportPotholeScreen: React.FC<{ onBack: () => void }> = ({ onBack }
       formData.append('landmark', landmark);
       formData.append('latitude', String(locationCoords.lat));
       formData.append('longitude', String(locationCoords.lng));
-      formData.append('citizen_name', 'Mobile Citizen App User');
+      formData.append('reporter_email', 'mobile_citizen@civicfix.org');
 
       if (imageUri) {
-        const filename = imageUri.split('/').pop() || 'complaint.jpg';
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : 'image/jpeg';
-        formData.append('photo', {
-          uri: imageUri,
-          name: filename,
-          type,
-        } as any);
+        if (imageUri.startsWith('data:') || imageUri.startsWith('blob:')) {
+          // Web / Blob environment
+          const resBlob = await fetch(imageUri);
+          const blob = await resBlob.blob();
+          formData.append('photo', blob, 'complaint.jpg');
+        } else {
+          // Native device environment
+          const filename = imageUri.split('/').pop() || 'complaint.jpg';
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : 'image/jpeg';
+          formData.append('photo', {
+            uri: imageUri,
+            name: filename,
+            type,
+          } as any);
+        }
       }
 
       const res = await submitMobileComplaint(formData);
@@ -128,31 +169,45 @@ export const ReportPotholeScreen: React.FC<{ onBack: () => void }> = ({ onBack }
       </Text>
 
       {/* Photo Picker Box */}
-      <TouchableOpacity style={styles.photoBox} onPress={handleCapturePhoto}>
-        {imageUri ? (
-          <Image source={{ uri: imageUri }} style={styles.previewImage} />
-        ) : (
-          <View style={styles.photoPlaceholder}>
-            <Camera color="#0F766E" size={32} />
-            <Text style={styles.photoPlaceholderText}>Tap to Capture Camera Photo</Text>
-            <Text style={styles.photoHint}>High clarity aids AI contour detection</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+      <View style={styles.photoContainer}>
+        <TouchableOpacity style={styles.photoBox} onPress={handleCapturePhoto}>
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.previewImage} />
+          ) : (
+            <View style={styles.photoPlaceholder}>
+              <Camera color="#0F766E" size={32} />
+              <Text style={styles.photoPlaceholderText}>Tap to Capture Camera Photo</Text>
+              <Text style={styles.photoHint}>Auto-locks GPS and high-resolution crater contour</Text>
+            </View>
+          )}
+        </TouchableOpacity>
 
-      {/* GPS Location Bar */}
+        <View style={styles.photoActionRow}>
+          <TouchableOpacity style={styles.miniActionButton} onPress={handleCapturePhoto}>
+            <Text style={styles.miniActionText}>📷 Take Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.miniActionButton} onPress={handleSelectFromGallery}>
+            <Text style={styles.miniActionText}>🖼️ Pick from Gallery</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* GPS Location Bar with Auto-Detect Status */}
       <View style={styles.gpsBar}>
         <View style={styles.gpsInfo}>
           <MapPin color="#EF4444" size={18} />
-          <Text style={styles.gpsText}>
-            {locationCoords.lat.toFixed(4)}°N, {locationCoords.lng.toFixed(4)}°E
-          </Text>
+          <View>
+            <Text style={styles.gpsText}>
+              {locationCoords.lat.toFixed(4)}°N, {locationCoords.lng.toFixed(4)}°E
+            </Text>
+            <Text style={styles.gpsSubtext}>Auto-Detected via Hardware GPS</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.gpsButton} onPress={handleFetchGPS} disabled={locating}>
+        <TouchableOpacity style={styles.gpsButton} onPress={fetchGPSAutomatically} disabled={locating}>
           {locating ? (
             <ActivityIndicator size="small" color="#0F766E" />
           ) : (
-            <Text style={styles.gpsButtonText}>Lock GPS</Text>
+            <Text style={styles.gpsButtonText}>Re-Sync GPS</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -254,6 +309,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     lineHeight: 18,
   },
+  photoContainer: {
+    marginBottom: 16,
+  },
   photoBox: {
     height: 190,
     backgroundColor: '#FFFFFF',
@@ -264,7 +322,25 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
+  },
+  photoActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  miniActionButton: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  miniActionText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
   },
   previewImage: {
     width: '100%',
@@ -299,13 +375,18 @@ const styles = StyleSheet.create({
   gpsInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   gpsText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#172033',
     fontFamily: 'monospace',
+  },
+  gpsSubtext: {
+    fontSize: 10,
+    color: '#059669',
+    fontWeight: '600',
   },
   gpsButton: {
     backgroundColor: '#F0FDFA',

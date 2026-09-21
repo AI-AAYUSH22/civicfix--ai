@@ -1,12 +1,17 @@
 import { Platform } from 'react-native';
 
-// When running on Android emulator: 'http://10.0.2.2:8000/api/v1'
-// When running on iOS simulator or web: 'http://localhost:8000/api/v1'
-// When testing on real device via Expo Go: use machine LAN IP (e.g. 'http://192.168.1.100:8000/api/v1')
-export const API_BASE_URL = Platform.select({
+// Default target:
+// Android emulator uses 10.0.2.2
+// Web / iOS simulator uses localhost
+// Set this to your local Wi-Fi IP (e.g. 'http://192.168.1.15:8000/api/v1') if testing on a physical phone via Expo Go
+export let API_BASE_URL = Platform.select({
   android: 'http://10.0.2.2:8000/api/v1',
   default: 'http://localhost:8000/api/v1',
 });
+
+export function setCustomApiBaseUrl(url: string) {
+  API_BASE_URL = url;
+}
 
 export async function submitMobileComplaint(formData: FormData) {
   const res = await fetch(`${API_BASE_URL}/cases`, {
@@ -15,7 +20,7 @@ export async function submitMobileComplaint(formData: FormData) {
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.detail || 'Failed to submit complaint');
+    throw new Error(errorData?.detail || `Failed to submit complaint (${res.status})`);
   }
   return res.json();
 }
@@ -34,7 +39,7 @@ export async function uploadMobileEvidence(formData: FormData) {
   });
   if (!res.ok) {
     const errorData = await res.json().catch(() => null);
-    throw new Error(errorData?.detail || 'Evidence upload failed');
+    throw new Error(errorData?.detail || `Evidence upload failed (${res.status})`);
   }
   return res.json();
 }

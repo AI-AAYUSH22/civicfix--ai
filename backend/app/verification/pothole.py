@@ -50,10 +50,16 @@ def analyze_pothole_state(
     blur1 = cv2.GaussianBlur(gray1, (7, 7), 0)
     blur2 = cv2.GaussianBlur(gray2, (7, 7), 0)
 
-    # 1. Canny Edge Density Analysis
-    # The Before crater has jagged edges, shadow depth lines, and cracks
-    edges1 = cv2.Canny(blur1, 50, 150)
-    edges2 = cv2.Canny(blur2, 50, 150)
+    # 1. Adaptive Canny Edge Density Analysis
+    # Dynamically compute upper/lower thresholds from image median luminance for robust edge detection
+    def auto_canny(image, sigma=0.33):
+        v = np.median(image)
+        lower = int(max(20, (1.0 - sigma) * v))
+        upper = int(min(240, (1.0 + sigma) * v))
+        return cv2.Canny(image, lower, upper)
+
+    edges1 = auto_canny(blur1)
+    edges2 = auto_canny(blur2)
 
     edge_pixels_before = int(np.count_nonzero(edges1))
     edge_pixels_after = int(np.count_nonzero(edges2))

@@ -10,6 +10,7 @@ import {
   Receipt,
   Database,
   Banknote,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -686,6 +687,54 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
             <div>
               <p className="font-semibold text-[#172033] mb-1">Description:</p>
               <p className="text-[#64748B] leading-relaxed">{selectedCase.description}</p>
+            </div>
+
+            {/* Evidence Photo Preview Gallery */}
+            <div className="space-y-2 pt-1 border-t border-[#E2E8F0]">
+              <span className="font-bold text-[#172033] block">Photographic Inspection Evidence:</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-[#64748B]">Citizen / Before Repair Photo</span>
+                  <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-200">
+                    {selectedCase.beforeImage ? (
+                      <img
+                        src={selectedCase.beforeImage}
+                        alt="Before / Citizen Report"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center p-3 text-slate-400">
+                        <AlertTriangle size={24} className="mx-auto text-amber-400 mb-1" />
+                        <p className="text-[11px] font-medium text-slate-300">No citizen photo uploaded</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-[11px] font-semibold text-[#64748B]">Contractor After Repair Photo</span>
+                  <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center border border-slate-200">
+                    {selectedCase.afterImage ? (
+                      <img
+                        src={selectedCase.afterImage}
+                        alt="After Repair"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="text-center p-3 text-slate-400">
+                        <Clock size={24} className="mx-auto text-slate-400 mb-1" />
+                        <p className="text-[11px] font-medium text-slate-300">Awaiting contractor work</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
 
             {selectedCase.status === 'VALIDATED' && contractors.length > 0 && (

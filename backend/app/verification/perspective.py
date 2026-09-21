@@ -86,17 +86,29 @@ def verify_perspective(
     homography_matrix_found = False
     H_matrix = None
 
-    if len(good_matches) >= 6:
+    if len(good_matches) >= 4:
         src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
         dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
 
-        H, mask = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, 4.0)
-        if mask is not None:
-            inliers = mask.ravel().tolist()
-            inlier_count = sum(inliers)
-            inlier_ratio = inlier_count / max(len(good_matches), 1)
-            homography_matrix_found = (H is not None)
-            H_matrix = H
+        if len(good_matches) >= 6:
+            H, mask = cv2.findHomography(dst_pts, src_pts, cv2.RANSAC, 5.0)
+            if mask is not None:
+                inliers = mask.ravel().tolist()
+                inlier_count = sum(inliers)
+                inlier_ratio = inlier_count / max(len(good_matches), 1)
+                homography_matrix_found = (H is not None)
+                H_matrix = H
+
+        # Fallback to Affine partial 2D if homography had low inliers (e.g. nearly collinear road edges)
+        if inlier_count < 4 and len(good_matches) >= 4:
+            M, affine_mask = cv2.estimateAffinePartial2D(dst_pts, src_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0)
+            if affine_mask is not None:
+                affine_inliers = affine_mask.ravel().tolist()
+                affine_count = sum(affine_inliers)
+                if affine_count > inlier_count:
+                    inlier_count = affine_count
+                    inlier_ratio = affine_count / max(len(good_matches), 1)
+                    homography_matrix_found = (M is not None)
 
     # Evaluate score and status based on SIFT RANSAC inliers
     if inlier_count >= 20 and inlier_ratio >= 0.30:
