@@ -101,11 +101,34 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     setCaptureModalOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setVerificationResult(null);
+
+      if (captureType === 'after') {
+        setUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append('photo', file);
+          const res = await fetch('http://localhost:8000/api/v1/cases/analyze-repair-photo', {
+            method: 'POST',
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.is_repaired || data.confidence < 50) {
+              setVerificationResult({ error: true, message: data.message });
+            }
+          }
+        } catch (err) {
+          console.error('AI Analysis failed:', err);
+        } finally {
+          setUploading(false);
+        }
+      }
     }
   };
 
@@ -286,7 +309,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
               <Button
                 variant="primary"
                 size="sm"
-                disabled={uploading}
+                disabled={uploading || verificationResult?.error}
                 leftIcon={<UploadCloud size={14} />}
                 onClick={handleUploadEvidence}
               >
@@ -324,6 +347,22 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </div>
               )}
 
+              {uploading && captureType === 'after' && !verificationResult && (
+                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                  <Sparkles size={32} className="text-indigo-400 animate-spin mb-2" />
+                  <p className="text-white font-bold text-sm">AI Validating Repair Surface...</p>
+                </div>
+              )}
+
+              {verificationResult?.error && (
+                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce w-full max-w-sm">
+                  <p className="font-black text-xl tracking-widest uppercase flex items-center justify-center gap-2 text-center">
+                    <span>⚠️</span> ERROR: INVALID REPAIR
+                  </p>
+                  <p className="text-xs text-center font-semibold mt-1">Only fully constructed roads are accepted.</p>
+                </div>
+              )}
+
               {/* Live Overlay Stamp */}
               <div className="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-md rounded-lg p-2 text-[10px] text-slate-300 flex items-center justify-between">
                 <div>
@@ -342,7 +381,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
             </div>
 
             {/* Verification Result Drawer (if AFTER submitted) */}
-            {verificationResult && (
+            {verificationResult && !verificationResult.error && (
               <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-[#0F766E] flex items-center gap-1.5">

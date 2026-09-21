@@ -13,7 +13,7 @@ from app.services.geo_service import find_nearest_ward_and_road, check_nearby_du
 from app.services.state_machine import validate_state_transition
 from app.services.storage_service import save_upload_file
 from app.services.audit_service import log_audit_event, create_notification
-from app.services.ai_service import analyze_pothole_image
+from app.services.ai_service import analyze_pothole_image, analyze_repaired_road_image
 
 router = APIRouter()
 
@@ -144,6 +144,15 @@ async def analyze_photo(photo: UploadFile = File(...)):
     """
     image_bytes = await photo.read()
     result = analyze_pothole_image(image_bytes)
+    return result
+
+@router.post("/analyze-repair-photo", response_model=dict)
+async def analyze_repair_photo(photo: UploadFile = File(...)):
+    """
+    Analyzes an uploaded photo using OpenCV AI service to verify it is a fully constructed/repaired road.
+    """
+    image_bytes = await photo.read()
+    result = analyze_repaired_road_image(image_bytes)
     return result
 
 @router.get("", response_model=List[dict])
