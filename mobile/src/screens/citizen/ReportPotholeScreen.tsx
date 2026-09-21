@@ -17,13 +17,13 @@ import { submitMobileComplaint } from '../../api/client';
 
 export const ReportPotholeScreen: React.FC<{ onBack: () => void }> = ({ onBack }) => {
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [address, setAddress] = useState('Gokhale Road, Dadar West');
-  const [landmark, setLandmark] = useState('Near Plaza Cinema');
-  const [description, setDescription] = useState('Dangerous road cavity on lane 2 causing two-wheeler skids.');
+  const [address, setAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [description, setDescription] = useState('Dangerous road cavity causing risk to commuters.');
   const [severity, setSeverity] = useState<'Low' | 'Medium' | 'High'>('High');
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number }>({
-    lat: 19.0178,
-    lng: 72.8478,
+    lat: 19.0760,
+    lng: 72.8777,
   });
   const [locating, setLocating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
