@@ -128,6 +128,26 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
         } finally {
           setUploading(false);
         }
+      } else if (captureType === 'before') {
+        setUploading(true);
+        try {
+          const formData = new FormData();
+          formData.append('photo', file);
+          const res = await fetch('http://localhost:8000/api/v1/cases/analyze-photo', {
+            method: 'POST',
+            body: formData,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (!data.is_pothole || data.confidence < 50) {
+              setVerificationResult({ error: true, message: data.message });
+            }
+          }
+        } catch (err) {
+          console.error('AI Analysis failed:', err);
+        } finally {
+          setUploading(false);
+        }
       }
     }
   };
@@ -347,19 +367,23 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </div>
               )}
 
-              {uploading && captureType === 'after' && !verificationResult && (
+              {uploading && !verificationResult && (
                 <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
                   <Sparkles size={32} className="text-indigo-400 animate-spin mb-2" />
-                  <p className="text-white font-bold text-sm">AI Validating Repair Surface...</p>
+                  <p className="text-white font-bold text-sm">
+                    {captureType === 'after' ? 'AI Validating Repair Surface...' : 'AI Validating Pothole...'}
+                  </p>
                 </div>
               )}
 
               {verificationResult?.error && (
                 <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce w-full max-w-sm">
                   <p className="font-black text-xl tracking-widest uppercase flex items-center justify-center gap-2 text-center">
-                    <span>⚠️</span> ERROR: INVALID REPAIR
+                    <span>⚠️</span> {captureType === 'after' ? 'ERROR: INVALID REPAIR' : 'ERROR: NO POTHOLE'}
                   </p>
-                  <p className="text-xs text-center font-semibold mt-1">Only fully constructed roads are accepted.</p>
+                  <p className="text-xs text-center font-semibold mt-1">
+                    {captureType === 'after' ? 'Only fully constructed roads are accepted.' : 'You must capture a valid pothole to proceed.'}
+                  </p>
                 </div>
               )}
 
