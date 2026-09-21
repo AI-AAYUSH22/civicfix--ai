@@ -17,6 +17,20 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
         height, width = img.shape[:2]
         total_pixels = height * width
 
+        # Global Check: A road image should be mostly grey/asphalt
+        hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        global_mean_val = cv2.mean(hsv_img)
+        global_saturation = global_mean_val[1]
+        
+        # If the overall image is very colorful, it's not a road
+        if global_saturation > 40:
+            return {
+                "is_pothole": False,
+                "confidence": 10.0,
+                "estimated_size_sqm": 0.0,
+                "message": "Invalid: Background does not match asphalt road profile."
+            }
+
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 

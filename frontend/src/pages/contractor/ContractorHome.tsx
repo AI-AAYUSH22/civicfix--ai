@@ -376,17 +376,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </div>
               )}
 
-              {verificationResult?.error && (
-                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce w-full max-w-sm">
-                  <p className="font-black text-xl tracking-widest uppercase flex items-center justify-center gap-2 text-center">
-                    <span>⚠️</span> {captureType === 'after' ? 'ERROR: INVALID REPAIR' : 'ERROR: NO POTHOLE'}
-                  </p>
-                  <p className="text-xs text-center font-semibold mt-1">
-                    {captureType === 'after' ? 'Only fully constructed roads are accepted.' : 'You must capture a valid pothole to proceed.'}
-                  </p>
-                </div>
-              )}
-
               {/* Live Overlay Stamp */}
               <div className="absolute bottom-2 left-2 right-2 bg-black/75 backdrop-blur-md rounded-lg p-2 text-[10px] text-slate-300 flex items-center justify-between">
                 <div>
@@ -403,6 +392,17 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </div>
               </div>
             </div>
+
+            {verificationResult?.error && (
+              <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce w-full max-w-sm">
+                <p className="font-black text-xl tracking-widest uppercase flex items-center justify-center gap-2 text-center">
+                  <span>⚠️</span> {captureType === 'after' ? 'ERROR: INVALID REPAIR' : 'ERROR: NO POTHOLE'}
+                </p>
+                <p className="text-xs text-center font-semibold mt-1">
+                  {captureType === 'after' ? 'Only fully constructed roads are accepted.' : 'You must capture a valid pothole to proceed.'}
+                </p>
+              </div>
+            )}
 
             {/* Verification Result Drawer (if AFTER submitted) */}
             {verificationResult && !verificationResult.error && (
