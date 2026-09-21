@@ -35,6 +35,12 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
   const [uploading, setUploading] = useState(false);
   const [verificationResult, setVerificationResult] = useState<any | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  
+  // Camera & GPS State
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [liveLocation, setLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Expense Memo State
   const [memoModalOpen, setMemoModalOpen] = useState(false);
@@ -99,14 +105,123 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     setPreviewUrl(null);
     setVerificationResult(null);
     setCaptureModalOpen(true);
+    startCamera();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
+  const startCamera = async () => {
+    try {
+      const mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      setStream(mediaStream);
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      
+      // Get live GPS
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => {
+          console.warn('GPS Error', err);
+          // Fallback to mock if permission denied for demo
+          setLiveLocation({ lat: 19.0178, lng: 72.8478 });
+        },
+        { enableHighAccuracy: true }
+      );
+    } catch (err) {
+      console.error('Camera failed', err);
+      showToast('Could not access camera. Check permissions.');
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+  };
+
+  const handleCloseCapture = () => {
+    stopCamera();
+    setCaptureModalOpen(false);
+  };
+
+  const captureLivePhoto = async () => {
+    if (!videoRef.current || !canvasRef.current || !selectedOrder) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    // Set canvas dimensions to match video
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    
+    // 1. Draw raw video frame
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // 2. Add Geo-Watermark Overlay
+    // Semi-transparent black bar at the bottom
+    const barHeight = 100;
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, canvas.height - barHeight, canvas.width, barHeight);
+    
+    // Watermark Text
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 24px monospace';
+    ctx.fillText(`CivicFix CONTRACTOR EVIDENCE — ${captureType.toUpperCase()}`, 20, canvas.height - 65);
+    
+    ctx.font = '18px monospace';
+    ctx.fillStyle = '#14B8A6'; // Teal-400
+    const lat = liveLocation?.lat.toFixed(6) || selectedOrder.coordinates?.lat.toFixed(6);
+    const lng = liveLocation?.lng.toFixed(6) || selectedOrder.coordinates?.lng.toFixed(6);
+    ctx.fillText(`GPS: ${lat}°N, ${lng}°E`, 20, canvas.height - 35);
+    
+    ctx.fillStyle = '#94A3B8';
+    const timestamp = new Date().toLocaleString();
+    ctx.fillText(`${timestamp} • WO: ${selectedOrder.id} • ${selectedOrder.location} • ${selectedOrder.ward}`, 20, canvas.height - 10);
+    
+    // 3. Convert to File and Set Preview
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const file = new File([blob], `${captureType}_evidence_${Date.now()}.jpg`, { type: 'image/jpeg' });
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      stopCamera(); // Stop camera once captured
+      
+      // Automatically trigger AI verification
+      await analyzeCapturedPhoto(file);
+    }, 'image/jpeg', 0.9);
+  };
+
+  const analyzeCapturedPhoto = async (file: File) => {
+    setVerificationResult(null);
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('photo', file);
+      const endpoint = captureType === 'after' ? 'analyze-repair-photo' : 'analyze-photo';
+      
+      const res = await fetch(`http://localhost:8000/api/v1/cases/${endpoint}`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const passed = captureType === 'after' ? data.is_repaired : data.is_pothole;
+        if (!passed || data.confidence < 50) {
+          setVerificationResult({ error: true, message: data.message });
+        }
+      }
+    } catch (err) {
+      console.error('AI Analysis failed:', err);
+    } finally {
+      setUploading(false);
     }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Gallery upload is disabled for contractors. They must use the live camera.
+    alert('Gallery uploads are disabled for contractors. Please use the live camera to capture evidence.');
   };
 
   const handleUploadEvidence = async () => {
@@ -153,7 +268,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
         showToast(`AI Verification Complete: ${result.verification.status} (${result.verification.overall_score}/100)`);
       } else {
         showToast(`BEFORE capture saved. Case is now under repair!`);
-        setCaptureModalOpen(false);
+        handleCloseCapture();
       }
     } catch (err: any) {
       alert(err.message || 'Evidence upload failed');
@@ -326,18 +441,18 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
       {captureModalOpen && selectedOrder && (
         <Modal
           isOpen={captureModalOpen}
-          onClose={() => setCaptureModalOpen(false)}
+          onClose={handleCloseCapture}
           title={`CivicFix Platform Camera — ${captureType.toUpperCase()} Capture`}
           description={`Work Order: ${selectedOrder.id} • ${selectedOrder.location}`}
           footer={
             <div className="flex items-center justify-between w-full">
-              <Button variant="secondary" size="sm" onClick={() => setCaptureModalOpen(false)}>
+              <Button variant="secondary" size="sm" onClick={handleCloseCapture}>
                 Cancel
               </Button>
               <Button
                 variant="primary"
                 size="sm"
-                disabled={uploading}
+                disabled={uploading || verificationResult?.error}
                 leftIcon={<UploadCloud size={14} />}
                 onClick={handleUploadEvidence}
               >
@@ -354,24 +469,41 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
               {previewUrl ? (
                 <img src={previewUrl} alt="Capture preview" className="w-full h-full object-cover" />
               ) : (
-                <div className="text-center p-6 text-slate-400 space-y-2">
-                  <Crosshair size={36} className="mx-auto text-teal-400 animate-spin" />
-                  <p className="text-xs font-semibold text-white">Viewfinder Ready</p>
-                  <p className="text-[11px]">Align the pothole cavity in center frame</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="hidden"
+                <>
+                  <video 
+                    ref={videoRef} 
+                    autoPlay 
+                    playsInline 
+                    muted 
+                    className="w-full h-full object-cover absolute inset-0 z-0"
                   />
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-2 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold"
-                  >
-                    Choose Photo / Capture Camera
-                  </button>
+                  
+                  {/* Targeting Reticle */}
+                  <div className="absolute inset-0 z-10 flex flex-col items-center justify-center pointer-events-none">
+                    <Crosshair size={48} className="text-teal-400 opacity-70 mb-8" />
+                  </div>
+
+                  <div className="absolute bottom-6 left-0 right-0 flex justify-center z-20">
+                    <button
+                      type="button"
+                      onClick={captureLivePhoto}
+                      className="w-16 h-16 rounded-full border-4 border-white bg-white/20 hover:bg-white/40 flex items-center justify-center transition-colors"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-white" />
+                    </button>
+                  </div>
+                  
+                  {/* Hidden Canvas for Watermarking */}
+                  <canvas ref={canvasRef} className="hidden" />
+                </>
+              )}
+
+              {uploading && !verificationResult && (
+                <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center">
+                  <Sparkles size={32} className="text-indigo-400 animate-spin mb-2" />
+                  <p className="text-white font-bold text-sm">
+                    {captureType === 'after' ? 'AI Validating Repair Surface...' : 'AI Validating Pothole...'}
+                  </p>
                 </div>
               )}
 
@@ -392,8 +524,19 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
               </div>
             </div>
 
+            {verificationResult?.error && (
+              <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-6 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce w-full max-w-sm">
+                <p className="font-black text-xl tracking-widest uppercase flex items-center justify-center gap-2 text-center">
+                  <span>⚠️</span> {captureType === 'after' ? 'ERROR: INVALID REPAIR' : 'ERROR: NO POTHOLE'}
+                </p>
+                <p className="text-xs text-center font-semibold mt-1">
+                  {captureType === 'after' ? 'Only fully constructed roads are accepted.' : 'You must capture a valid pothole to proceed.'}
+                </p>
+              </div>
+            )}
+
             {/* Verification Result Drawer (if AFTER submitted) */}
-            {verificationResult && (
+            {verificationResult && !verificationResult.error && (
               <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-sm text-[#0F766E] flex items-center gap-1.5">
