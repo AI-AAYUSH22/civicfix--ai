@@ -7,6 +7,8 @@ import os
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_contractor
+from app.models.user import User
 from app.models.work_order import WorkOrder
 from app.models.case import Case
 from app.models.evidence import EvidenceFile
@@ -26,6 +28,7 @@ async def upload_evidence(
     longitude: float = Form(...),
     device_info: Optional[str] = Form(None),
     file: UploadFile = File(...),
+    current_user: User = Depends(require_contractor),
     db: Session = Depends(get_db)
 ):
     """
@@ -76,13 +79,15 @@ async def upload_evidence(
             case.status = "REPAIRING"
         wo.status = "In Progress"
 
+        contractor_name = current_user.full_name or "Contractor"
         log_audit_event(
             db=db,
             action="BEFORE_EVIDENCE_CAPTURED_GROUND_LOCKED",
             entity_type="EvidenceFile",
             entity_id=evidence.id,
-            actor_name=wo.contractor.name if wo.contractor else "Contractor",
-            actor_role="CONTRACTOR",
+            actor_id=current_user.id,
+            actor_name=contractor_name,
+            actor_role=getattr(current_user.role, "value", "CONTRACTOR"),
             details={"work_order_id": wo.id, "latitude": latitude, "longitude": longitude, "state": case.status}
         )
         create_notification(
@@ -125,13 +130,15 @@ async def upload_evidence(
             case.status = "VERIFICATION"
         wo.status = "Evidence Submitted"
 
+        contractor_name = current_user.full_name or "Contractor"
         log_audit_event(
             db=db,
             action="AFTER_EVIDENCE_CAPTURED",
             entity_type="EvidenceFile",
             entity_id=evidence.id,
-            actor_name=wo.contractor.name if wo.contractor else "Contractor",
-            actor_role="CONTRACTOR",
+            actor_id=current_user.id,
+            actor_name=contractor_name,
+            actor_role=getattr(current_user.role, "value", "CONTRACTOR"),
             details={"work_order_id": wo.id, "latitude": latitude, "longitude": longitude}
         )
 

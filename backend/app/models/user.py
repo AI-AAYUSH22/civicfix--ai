@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime, Enum
+from sqlalchemy import Column, String, DateTime, Enum, Boolean
 from app.core.database import Base
 
 class UserRole(str, Enum):
@@ -18,4 +18,18 @@ class User(Base):
     role = Column(String(50), default=UserRole.CITIZEN, nullable=False)
     phone = Column(String(50), nullable=True)
     hashed_password = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __init__(self, **kwargs):
+        if "name" in kwargs and "full_name" not in kwargs:
+            kwargs["full_name"] = kwargs.pop("name")
+        super().__init__(**kwargs)
+
+    @property
+    def name(self) -> str:
+        return self.full_name
+
+    @name.setter
+    def name(self, value: str):
+        self.full_name = value

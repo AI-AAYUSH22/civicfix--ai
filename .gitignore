@@ -51,6 +51,11 @@ backend/uploads/complaints/
 backend/uploads/work_orders/
 backend/uploads/memos/
 
+# Uploads & Runtime media
+uploads/
+backend/uploads/work_orders/
+backend/uploads/complaints/
+
 # OS files
 .DS_Store
 Thumbs.db

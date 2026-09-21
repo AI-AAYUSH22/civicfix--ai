@@ -5,6 +5,8 @@ from datetime import datetime
 import json
 
 from app.core.database import get_db
+from app.api.deps import require_municipal
+from app.models.user import User
 from app.models.case import Case
 from app.models.ward import Ward, Contractor
 from app.models.audit import AuditLog
@@ -12,7 +14,10 @@ from app.models.audit import AuditLog
 router = APIRouter()
 
 @router.get("/stats", response_model=Dict[str, int])
-def get_municipal_stats(db: Session = Depends(get_db)):
+def get_municipal_stats(
+    current_user: User = Depends(require_municipal),
+    db: Session = Depends(get_db)
+):
     """
     Computes live dashboard statistics directly from the database.
     """
@@ -69,7 +74,11 @@ def list_contractors(db: Session = Depends(get_db)):
     ]
 
 @router.get("/audit-logs", response_model=List[Dict[str, Any]])
-def get_global_audit_logs(limit: int = 50, db: Session = Depends(get_db)):
+def get_global_audit_logs(
+    limit: int = 50,
+    current_user: User = Depends(require_municipal),
+    db: Session = Depends(get_db)
+):
     logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
     return [
         {

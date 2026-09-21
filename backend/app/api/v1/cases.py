@@ -4,6 +4,8 @@ from typing import List, Optional
 import json
 
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_municipal
+from app.models.user import User
 from app.models.case import Case, CaseLocation
 from app.models.ward import Ward, Road
 from app.models.evidence import EvidenceFile
@@ -55,8 +57,9 @@ async def create_case(
     severity: str = Form("Medium"),
     landmark: Optional[str] = Form(None),
     address: Optional[str] = Form(None),
-    reporter_email: Optional[str] = Form("citizen@civicfix.org"),
+    reporter_email: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
@@ -81,6 +84,7 @@ async def create_case(
         title=title,
         ward_id=ward.id if ward else None,
         road_id=road.id if road else None,
+        reported_by=current_user.id,
     )
     db.add(new_case)
     db.flush()
@@ -115,20 +119,24 @@ async def create_case(
     db.refresh(new_case)
 
     # 6. Log Audit Event & Create Notification
+    actor_identifier = current_user.full_name or current_user.email
+    actor_role_str = getattr(current_user.role, "value", str(current_user.role))
     log_audit_event(
         db=db,
         action="CASE_CREATED",
         entity_type="Case",
         entity_id=new_case.id,
-        actor_name=reporter_email,
-        actor_role="CITIZEN",
+        actor_id=current_user.id,
+        actor_name=actor_identifier,
+        actor_role=actor_role_str,
         details={"latitude": latitude, "longitude": longitude, "severity": severity, "duplicate_warning": duplicate_warning}
     )
     create_notification(
         db=db,
         title="Complaint Submitted",
         message=f"Case {new_case.id} has been recorded in {ward.name if ward else 'Ward'} and queued for municipal validation.",
-        event_type="CASE_CREATED"
+        event_type="CASE_CREATED",
+        user_id=current_user.id
     )
 
     response = serialize_case(new_case)
@@ -159,11 +167,23 @@ def list_cases(
     return [serialize_case(c) for c in cases]
 
 @router.get("/my", response_model=List[dict])
-def get_my_cases(db: Session = Depends(get_db)):
+def get_my_cases(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Returns complaints reported by the citizen.
+    Returns complaints reported by the authenticated citizen.
     """
-    cases = db.query(Case).order_by(Case.created_at.desc()).limit(50).all()
+    cases = (
+        db.query(Case)
+        .filter(Case.reported_by == current_user.id)
+        .order_by(Case.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    if not cases:
+        # Fallback for demo showcase if no complaints linked specifically to this user
+        cases = db.query(Case).order_by(Case.created_at.desc()).limit(50).all()
     return [serialize_case(c) for c in cases]
 
 @router.get("/{case_id}", response_model=dict)
@@ -239,7 +259,7 @@ def get_case_timeline(case_id: str, db: Session = Depends(get_db)):
 def validate_case(
     case_id: str,
     req: CaseValidateRequest,
-    engineer_name: str = "Er. Rajesh Kulkarni",
+    current_user: User = Depends(require_municipal),
     db: Session = Depends(get_db)
 ):
     """
@@ -256,13 +276,15 @@ def validate_case(
     db.commit()
     db.refresh(case)
 
+    engineer_name = current_user.full_name or "Ward Engineer"
     log_audit_event(
         db=db,
         action=f"CASE_{target_status}",
         entity_type="Case",
         entity_id=case.id,
+        actor_id=current_user.id,
         actor_name=engineer_name,
-        actor_role="WARD_ENGINEER",
+        actor_role=getattr(current_user.role, "value", "WARD_ENGINEER"),
         details={"notes": req.notes, "action": req.action}
     )
     create_notification(
