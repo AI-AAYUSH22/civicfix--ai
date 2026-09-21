@@ -13,6 +13,7 @@ from app.services.geo_service import find_nearest_ward_and_road, check_nearby_du
 from app.services.state_machine import validate_state_transition
 from app.services.storage_service import save_upload_file
 from app.services.audit_service import log_audit_event, create_notification
+from app.services.ai_service import analyze_pothole_image
 
 router = APIRouter()
 
@@ -135,6 +136,15 @@ async def create_case(
     if duplicate_warning:
         response["duplicate_notice"] = duplicate_warning
     return response
+
+@router.post("/analyze-photo", response_model=dict)
+async def analyze_photo(photo: UploadFile = File(...)):
+    """
+    Analyzes an uploaded photo using OpenCV AI service to detect pothole and estimate size.
+    """
+    image_bytes = await photo.read()
+    result = analyze_pothole_image(image_bytes)
+    return result
 
 @router.get("", response_model=List[dict])
 def list_cases(

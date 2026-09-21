@@ -18,8 +18,7 @@ import { Modal } from '@/components/ui/Modal';
 import { formatDate } from '@/utils/caseUtils';
 import type { MunicipalNavSection } from '@/layouts/MunicipalLayout';
 import type { PotholeCase } from '@/types';
-import CityMapPlaceholder from '@/components/CityMapPlaceholder';
-import WardAttention from '@/components/WardAttention';
+import CityMap from '@/components/CityMap';
 import { useApp } from '@/context/AppContext';
 import { approveExpenseMemo } from '@/services/api';
 
@@ -144,6 +143,16 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
     }
   };
 
+  const dynamicStats = useMemo(() => {
+    return {
+      totalActive: filteredCases.length,
+      pendingVerification: filteredCases.filter(c => ['NEEDS_REVIEW', 'VERIFICATION', 'Needs Review', 'AI Verification'].includes(c.status)).length,
+      underRepair: filteredCases.filter(c => c.status === 'REPAIRING' || c.status === 'Under Repair').length,
+      resolvedThisMonth: filteredCases.filter(c => ['VERIFIED', 'CLOSED', 'Resolved', 'Verified'].includes(c.status)).length,
+    };
+  }, [filteredCases]);
+
+
   return (
     <div className="space-y-6">
       {toastMessage && (
@@ -192,7 +201,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 Total Active Cases
               </span>
               <p className="text-2xl sm:text-3xl font-bold text-[#172033] mt-1">
-                {stats.totalActive}
+                {dynamicStats.totalActive}
               </p>
               <div className="flex items-center gap-1 text-[11px] text-emerald-600 mt-1 font-medium">
                 <TrendingUp size={13} />
@@ -205,7 +214,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 AI Verification Queue
               </span>
               <p className="text-2xl sm:text-3xl font-bold text-[#0F766E] mt-1">
-                {stats.pendingVerification}
+                {dynamicStats.pendingVerification}
               </p>
               <span className="text-[11px] text-[#64748B] mt-1 block">
                 Awaiting municipal engineer review
@@ -217,7 +226,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 Under Repair / Field
               </span>
               <p className="text-2xl sm:text-3xl font-bold text-[#D97706] mt-1">
-                {stats.underRepair}
+                {dynamicStats.underRepair}
               </p>
               <span className="text-[11px] text-[#64748B] mt-1 block">
                 Active contractor crews on site
@@ -229,7 +238,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 Resolved & Verified
               </span>
               <p className="text-2xl sm:text-3xl font-bold text-[#16A34A] mt-1">
-                {stats.resolvedThisMonth}
+                {dynamicStats.resolvedThisMonth}
               </p>
               <span className="text-[11px] text-emerald-700 mt-1 block">
                 100% verified with visual evidence
@@ -237,39 +246,32 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
             </Card>
           </div>
 
-          {/* GIS Map & Attention Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-sm text-[#172033] uppercase tracking-wider">
-                  Ward GIS Map & Heatmap
-                </h3>
-                <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0] shadow-subtle">
-                  {(['Mumbai', 'Thane'] as const).map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => setMapCity(c)}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
-                        mapCity === c
-                          ? 'bg-[#172033] text-white shadow-sm'
-                          : 'text-[#64748B] hover:text-[#172033]'
-                      }`}
-                    >
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="h-[360px] rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-subtle bg-white">
-                <CityMapPlaceholder cases={filteredCases} city={mapCity} />
+          {/* GIS Map */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-[#172033] uppercase tracking-wider">
+                Ward GIS Map & Heatmap
+              </h3>
+              <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0] shadow-subtle">
+                {(['Mumbai', 'Thane'] as const).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setMapCity(c)}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                      mapCity === c
+                        ? 'bg-[#172033] text-white shadow-sm'
+                        : 'text-[#64748B] hover:text-[#172033]'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
               </div>
             </div>
 
-            <WardAttention
-              wards={wards}
-              onSelectWard={(wId) => setSelectedWardId(wId)}
-            />
+            <div className="h-[360px] rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-subtle bg-white z-0" style={{ zIndex: 0 }}>
+              <CityMap cases={filteredCases} city={mapCity} />
+            </div>
           </div>
 
           {/* Recent Case Queue */}
@@ -687,6 +689,15 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
               <p className="font-semibold text-[#172033] mb-1">Description:</p>
               <p className="text-[#64748B] leading-relaxed">{selectedCase.description}</p>
             </div>
+
+            {selectedCase.beforeImage && (
+              <div className="mt-4">
+                <p className="font-semibold text-[#172033] mb-1">Reported Pothole Evidence:</p>
+                <div className="rounded-xl overflow-hidden border border-[#E2E8F0] shadow-sm max-h-48 flex justify-center bg-slate-900">
+                  <img src={selectedCase.beforeImage} alt="Pothole" className="object-cover w-full h-full" />
+                </div>
+              </div>
+            )}
 
             {selectedCase.status === 'VALIDATED' && contractors.length > 0 && (
               <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-2">

@@ -32,6 +32,8 @@ export const CitizenHome: React.FC = () => {
   const [createdCase, setCreatedCase] = useState<any | null>(null);
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [aiResult, setAiResult] = useState<{ is_pothole: boolean; confidence: number; estimated_size_sqm: number; message: string } | null>(null);
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,15 +44,36 @@ export const CitizenHome: React.FC = () => {
   const handleOpenReport = () => {
     setReportStep(1);
     setCreatedCase(null);
+    setAiResult(null);
+    setSelectedFile(null);
+    setPreviewUrl(null);
     setReportModalOpen(true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setReportStep(3); // move to confirm
+
+      setAnalyzingPhoto(true);
+      try {
+        const formData = new FormData();
+        formData.append('photo', file);
+        const res = await fetch('http://localhost:8000/api/v1/cases/analyze-photo', {
+          method: 'POST',
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAiResult(data);
+        }
+      } catch (err) {
+        console.error('AI Analysis failed:', err);
+      } finally {
+        setAnalyzingPhoto(false);
+      }
     }
   };
 
@@ -278,7 +301,12 @@ export const CitizenHome: React.FC = () => {
               <Button variant="secondary" size="sm" onClick={() => setReportStep(2)}>
                 Back
               </Button>
-              <Button variant="primary" size="sm" onClick={() => setReportStep(4)}>
+              <Button 
+                variant="primary" 
+                size="sm" 
+                onClick={() => setReportStep(4)}
+                disabled={analyzingPhoto || (aiResult !== null && (!aiResult.is_pothole || aiResult.confidence < 50))}
+              >
                 Confirm Location
               </Button>
             </>
@@ -358,6 +386,35 @@ export const CitizenHome: React.FC = () => {
 
           {reportStep === 3 && (
             <div className="space-y-3 text-xs">
+              {analyzingPhoto ? (
+                <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-xl flex items-center justify-center gap-2 text-indigo-700">
+                  <Sparkles size={16} className="animate-spin" />
+                  <span className="font-semibold">AI is analyzing image...</span>
+                </div>
+              ) : aiResult && (
+                <div className={`p-3 border rounded-xl space-y-1 ${aiResult.confidence > 70 ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+                  <p className={`font-bold flex items-center gap-1 ${aiResult.confidence > 70 ? 'text-emerald-700' : 'text-amber-700'}`}>
+                    <Sparkles size={13} />
+                    AI Detection: {aiResult.is_pothole ? 'Pothole Confirmed' : 'Low Confidence'}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
+                    <div>
+                      <span className="text-slate-500 text-[10px] uppercase block">Confidence Score</span>
+                      <p className="font-semibold text-slate-800 text-sm">{aiResult.confidence}%</p>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 text-[10px] uppercase block">Estimated Size</span>
+                      <p className="font-semibold text-slate-800 text-sm">{aiResult.estimated_size_sqm} sq m</p>
+                    </div>
+                  </div>
+                  {(!aiResult.is_pothole || aiResult.confidence < 50) && (
+                    <p className="text-red-600 mt-2 pt-2 border-t border-red-200 font-semibold text-center text-xs">
+                      Submission Blocked: Image does not meet pothole criteria. Please upload a clearer photo.
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-1">
                 <p className="font-bold text-[#0F766E] flex items-center gap-1">
                   <MapPin size={13} />
