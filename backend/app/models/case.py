@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Float, ForeignKey, Text, DateTime
+from sqlalchemy import Column, String, Float, ForeignKey, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from app.core.database import Base
 
@@ -14,6 +14,24 @@ class Case(Base):
     severity = Column(String(20), default="Medium", nullable=False)  # Low, Medium, High
     status = Column(String(50), default="REPORTED", nullable=False)
     # Status lifecycle: REPORTED -> VALIDATED -> ASSIGNED -> REPAIRING -> VERIFICATION -> VERIFIED / NEEDS_REVIEW -> CLOSED
+    
+    # Social Intake & Location Resolver fields
+    channel = Column(String(50), default="PORTAL", nullable=False)  # PORTAL, WHATSAPP, REDDIT
+    source_id = Column(String(255), nullable=True)  # e.g., wa-919876543210 or reddit-t3_abc123
+    citizen_name = Column(String(255), nullable=True)  # Display name
+    source_username = Column(String(255), nullable=True)  # e.g., u/username or whatsapp name
+    source_url = Column(String(500), nullable=True)  # Link to reddit post / comment
+    location_status = Column(String(50), default="RESOLVED", nullable=False)  # RESOLVED, PENDING, NEEDS_CLARIFICATION
+    location_requested_at = Column(DateTime, nullable=True)
+    location_resolved_at = Column(DateTime, nullable=True)
+    location_confidence = Column(Float, default=1.0, nullable=False)
+    
+    # Outbound Notification Idempotency
+    notification_sent = Column(Boolean, default=False, nullable=False)
+    last_notification_platform = Column(String(50), nullable=True)
+    last_notification_at = Column(DateTime, nullable=True)
+    last_notification_status = Column(String(50), nullable=True)
+
     ward_id = Column(String(36), ForeignKey("wards.id"), nullable=True)
     road_id = Column(String(36), ForeignKey("roads.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)

@@ -246,6 +246,19 @@ async def upload_evidence(
             "checks": ai_result["checks"]
         }
 
+        # Automatic Social Update (dispatch resolution to Reddit / WhatsApp if applicable)
+        if "VERIFIED" in ai_result["status"]:
+            from app.services.social_intake_service import SocialIntakeService
+            norm_score = vr.overall_score / 100.0 if vr.overall_score > 1.0 else vr.overall_score
+            SocialIntakeService.dispatch_resolution_notification(
+                db=db,
+                case_id=case.id,
+                overall_score=norm_score,
+                comparison_image_url=f"/uploads/{rel_path}" if not rel_path.startswith("/") else rel_path,
+                summary=vr.summary
+            )
+
+
     db.commit()
     db.refresh(evidence)
 
