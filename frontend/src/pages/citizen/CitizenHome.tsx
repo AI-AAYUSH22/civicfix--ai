@@ -18,11 +18,19 @@ import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/caseUtils';
 import { getNearestWard } from '@/services/api';
 
-export const CitizenHome: React.FC = () => {
+interface CitizenHomeProps {
+  autoOpenCamera?: boolean;
+  onReportClose?: () => void;
+}
+
+export const CitizenHome: React.FC<CitizenHomeProps> = ({
+  autoOpenCamera = false,
+  onReportClose,
+}) => {
   const { cases, submitComplaint } = useApp();
 
-  const [reportModalOpen, setReportModalOpen] = useState(false);
-  const [reportStep, setReportStep] = useState<number>(1);
+  const [reportModalOpen, setReportModalOpen] = useState(autoOpenCamera);
+  const [reportStep, setReportStep] = useState<number>(autoOpenCamera ? 2 : 1);
   const [severity, setSeverity] = useState<Severity>('High');
   const [description, setDescription] = useState('Deep cavity causing dangerous road swerving and two-wheeler risk.');
   const [address, setAddress] = useState('');
@@ -191,12 +199,41 @@ export const CitizenHome: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
 
+  // Auto-trigger camera input when autoOpenCamera is activated
+  React.useEffect(() => {
+    if (autoOpenCamera) {
+      setReportModalOpen(true);
+      setReportStep(2);
+      // Automatically prompt file/camera picker after a short delay so UI is mounted
+      const timer = setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [autoOpenCamera]);
+
+  // Request browser geolocation so citizen can report from current position
+  React.useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLat(pos.coords.latitude);
+          setLng(pos.coords.longitude);
+        },
+        () => {
+          // fallback remains default coordinates
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
+
   // Active cases reported by citizens
   const activeCases = cases.filter((c) => c.status !== 'CLOSED');
   const resolvedCases = cases.filter((c) => c.status === 'VERIFIED' || c.status === 'CLOSED');
 
-  const handleOpenReport = () => {
-    setReportStep(1);
+  const handleOpenReport = (directToCamera = false) => {
+    setReportStep(directToCamera ? 2 : 1);
     setCreatedCase(null);
     setAiResult(null);
     setSelectedFile(null);
@@ -212,6 +249,20 @@ export const CitizenHome: React.FC = () => {
     setReportModalOpen(true);
     // Request location permission immediately when modal opens
     requestLocationPermission();
+    if (directToCamera) {
+      setTimeout(() => {
+        fileInputRef.current?.click();
+      }, 200);
+    }
+  };
+
+  const handleCloseReport = () => {
+    stopCamera();
+    stopGPSWatch();
+    setReportModalOpen(false);
+    if (onReportClose) {
+      onReportClose();
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,11 +445,7 @@ export const CitizenHome: React.FC = () => {
     startCamera();
   };
 
-  const closeReportModal = () => {
-    stopCamera();
-    stopGPSWatch();
-    setReportModalOpen(false);
-  };
+  const closeReportModal = handleCloseReport;
 
   return (
     <div className="space-y-5 relative">
@@ -429,7 +476,7 @@ export const CitizenHome: React.FC = () => {
               variant="secondary"
               size="md"
               leftIcon={<Camera size={16} className="text-[#0F766E]" />}
-              onClick={handleOpenReport}
+              onClick={() => handleOpenReport(true)}
               className="bg-white text-[#0F766E] hover:bg-slate-50 font-bold border-none shadow-md text-xs py-2.5 px-6"
             >
               Report Pothole Now
@@ -542,7 +589,7 @@ export const CitizenHome: React.FC = () => {
       {/* 5-Step Report Modal */}
       <Modal
         isOpen={reportModalOpen}
-        onClose={closeReportModal}
+        onClose={handleCloseReport}
         title={
           reportStep === 1
             ? 'Report a Pothole'
@@ -562,7 +609,7 @@ export const CitizenHome: React.FC = () => {
         footer={
           reportStep === 1 ? (
             <>
-              <Button variant="secondary" size="sm" onClick={closeReportModal}>
+              <Button variant="secondary" size="sm" onClick={handleCloseReport}>
                 Cancel
               </Button>
               <Button variant="primary" size="sm" onClick={goToStep2} disabled={locationPermission !== 'granted'}>
@@ -616,7 +663,7 @@ export const CitizenHome: React.FC = () => {
               variant="primary"
               size="sm"
               fullWidth
-              onClick={closeReportModal}
+              onClick={handleCloseReport}
             >
               Track Case {createdCase?.id || 'CF-New'}
             </Button>

@@ -390,6 +390,57 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                   <span>Priority: <strong className="text-[#172033]">{order.priority}</strong></span>
                 </div>
 
+                {/* Evidence Visual Previews */}
+                {(order.citizenPhotoUrl || order.beforePhotoUrl || order.afterPhotoUrl) && (
+                  <div className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                    {order.citizenPhotoUrl && (
+                      <div className="flex-1">
+                        <span className="text-[10px] font-semibold text-[#64748B] block mb-1">Citizen Photo</span>
+                        <div className="h-16 rounded overflow-hidden bg-slate-200 border border-slate-300">
+                          <img
+                            src={order.citizenPhotoUrl}
+                            alt="Citizen Report"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {order.beforePhotoUrl && (
+                      <div className="flex-1">
+                        <span className="text-[10px] font-semibold text-[#64748B] block mb-1">Before Repair</span>
+                        <div className="h-16 rounded overflow-hidden bg-slate-200 border border-slate-300">
+                          <img
+                            src={order.beforePhotoUrl}
+                            alt="Before Repair"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {order.afterPhotoUrl && (
+                      <div className="flex-1">
+                        <span className="text-[10px] font-semibold text-emerald-700 block mb-1">After Repair</span>
+                        <div className="h-16 rounded overflow-hidden bg-slate-200 border border-emerald-300">
+                          <img
+                            src={order.afterPhotoUrl}
+                            alt="After Repair"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLElement).style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Evidence & Billing Actions Strip */}
                 <div className="pt-1">
                   <Button

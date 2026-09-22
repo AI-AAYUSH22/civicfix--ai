@@ -24,7 +24,7 @@ function AppContent() {
 
   // Municipal state
   const [municipalSection, setMunicipalSection] = useState<MunicipalNavSection>('dashboard');
-  const [selectedWard, setSelectedWard] = useState<string>('Ward 12 — Dadar West');
+  const selectedWard = 'Ward G/N — Dadar / Mahim';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#F8FAFC]">
@@ -57,18 +57,10 @@ function AppContent() {
           >
             {citizenTab === 'home' && <CitizenHome />}
             {citizenTab === 'report' && (
-              <div className="p-4 bg-white rounded-2xl border border-[#E2E8F0] text-center py-10 space-y-3">
-                <h3 className="font-bold text-base text-[#172033]">Citizen Reporting Flow</h3>
-                <p className="text-xs text-[#64748B]">
-                  Click the "+ Report a pothole" button on the Home tab to experience the full 5-step report flow with live GPS & photo upload.
-                </p>
-                <button
-                  onClick={() => setCitizenTab('home')}
-                  className="px-4 py-2 bg-[#0F766E] text-white rounded-xl text-xs font-semibold"
-                >
-                  Return to Home
-                </button>
-              </div>
+              <CitizenHome
+                autoOpenCamera={true}
+                onReportClose={() => setCitizenTab('home')}
+              />
             )}
             {citizenTab === 'cases' && (
               <div className="space-y-3">
@@ -114,7 +106,6 @@ function AppContent() {
             activeSection={municipalSection}
             onSelectSection={setMunicipalSection}
             selectedWard={selectedWard}
-            onWardChange={setSelectedWard}
           >
             <MunicipalDashboardView activeSection={municipalSection} />
           </MunicipalLayout>

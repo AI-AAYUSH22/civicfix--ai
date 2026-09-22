@@ -14,6 +14,7 @@ import {
   ApiCase,
   ApiWorkOrder,
   ApiStats,
+  UPLOAD_BASE_URL,
 } from '@/services/api';
 import { cases as mockCases, wards as mockWards } from '@/data/mockData';
 import type { PotholeCase, WorkOrder } from '@/types';
@@ -23,9 +24,9 @@ interface AppContextType {
   loading: boolean;
   cases: PotholeCase[];
   workOrders: WorkOrder[];
-  stats: ApiStats;
   wards: any[];
   contractors: any[];
+  stats: ApiStats;
   refreshData: () => Promise<void>;
   submitComplaint: (formData: FormData) => Promise<ApiCase>;
   ingestSocialHandler: (rawText: string, channel: 'REDDIT' | 'WHATSAPP', file?: File) => Promise<any>;
@@ -48,6 +49,15 @@ interface AppContextType {
 
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
+
+function resolveImageUrl(path?: string): string | undefined {
+  if (!path) return undefined;
+  if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('data:') || path.startsWith('blob:')) {
+    return path;
+  }
+  const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+  return `${UPLOAD_BASE_URL}/${cleanPath}`;
+}
 
 // Helper to map backend ApiCase to frontend PotholeCase
 function mapApiCaseToFrontend(c: ApiCase): PotholeCase {
@@ -73,8 +83,8 @@ function mapApiCaseToFrontend(c: ApiCase): PotholeCase {
     assignedDate: c.work_order ? c.created_at : undefined,
     deadline: c.work_order?.deadline,
     contractor: c.work_order?.contractor_name,
-    beforeImage: beforeEv ? `http://localhost:8000/${beforeEv.storage_path}` : undefined,
-    afterImage: afterEv ? `http://localhost:8000/${afterEv.storage_path}` : undefined,
+    beforeImage: resolveImageUrl(beforeEv?.storage_path),
+    afterImage: resolveImageUrl(afterEv?.storage_path),
     verification: c.verification
       ? {
           status: (c.verification.status === 'VERIFIED' ? 'Verified' : c.verification.status === 'NEEDS_REVIEW' ? 'Needs Review' : 'Not Verified'),
@@ -104,6 +114,9 @@ function mapApiWorkOrderToFrontend(wo: ApiWorkOrder): WorkOrder {
     assignedContractor: wo.contractor_name || 'RoadWorks Unit A',
     beforePhotoCaptured: wo.before_photo_captured,
     afterPhotoCaptured: wo.after_photo_captured,
+    beforePhotoUrl: resolveImageUrl(wo.before_photo_url),
+    afterPhotoUrl: resolveImageUrl(wo.after_photo_url),
+    citizenPhotoUrl: resolveImageUrl(wo.citizen_photo_url),
     coordinates: {
       lat: wo.assigned_latitude,
       lng: wo.assigned_longitude,

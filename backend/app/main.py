@@ -5,18 +5,21 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.database import engine, Base, SessionLocal
-from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal, memos, whatsapp_bot, geo
+from app.core.database import engine, Base, SessionLocal, run_migrations
+from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal, memos, whatsapp_bot, social, geo
 from app.seed.demo_data import seed_database
 from app.core.multi_db import init_contractor_databases
+from app.services.social_worker import social_worker
 
-# Create all database tables
+# Create all database tables and apply pending schema migrations
 Base.metadata.create_all(bind=engine)
+run_migrations()
 init_contractor_databases()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure upload dirs exist and seed demo database
+    # Startup: ensure upload dirs exist, seed demo database, and start social workers
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
     os.makedirs(os.path.join(settings.UPLOAD_DIR, "memos"), exist_ok=True)
     os.makedirs(os.path.join(settings.UPLOAD_DIR, "social_ingest"), exist_ok=True)
@@ -26,7 +29,14 @@ async def lifespan(app: FastAPI):
         seed_database(db)
     finally:
         db.close()
+    
+    # Start Social Intake Background Worker (Reddit stream + maintenance)
+    await social_worker.start()
+    
     yield
+    
+    # Shutdown: stop background workers gracefully
+    await social_worker.stop()
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -59,6 +69,7 @@ app.include_router(verification.router, prefix=f"{settings.API_V1_STR}/verificat
 app.include_router(municipal.router, prefix=f"{settings.API_V1_STR}/municipal", tags=["Municipal Dashboard"])
 app.include_router(memos.router, prefix=f"{settings.API_V1_STR}/memos", tags=["Expense Memos"])
 app.include_router(whatsapp_bot.router, prefix=f"{settings.API_V1_STR}/whatsapp", tags=["WhatsApp Bot"])
+app.include_router(social.router, prefix=f"{settings.API_V1_STR}/social", tags=["Social Intake & Location"])
 app.include_router(geo.router, prefix=f"{settings.API_V1_STR}/geo", tags=["Geo"])
 
 

@@ -108,6 +108,9 @@ export interface WorkOrder {
   contractorId?: string;
   beforePhotoCaptured?: boolean;
   afterPhotoCaptured?: boolean;
+  beforePhotoUrl?: string;
+  afterPhotoUrl?: string;
+  citizenPhotoUrl?: string;
   coordinates?: { lat: number; lng: number };
 }
 

@@ -4,6 +4,8 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_municipal, require_contractor
+from app.models.user import User
 from app.models.case import Case
 from app.models.work_order import WorkOrder
 from app.models.ward import Contractor
@@ -47,7 +49,7 @@ def serialize_work_order(wo: WorkOrder) -> dict:
 @router.post("", response_model=dict)
 def create_work_order(
     req: WorkOrderCreate,
-    engineer_name: str = "Er. Rajesh Kulkarni",
+    current_user: User = Depends(require_municipal),
     db: Session = Depends(get_db)
 ):
     """
@@ -73,9 +75,11 @@ def create_work_order(
     assigned_lat = case.location.latitude if case.location else 19.0178
     assigned_lng = case.location.longitude if case.location else 72.8478
 
+    engineer_name = current_user.full_name or "Ward Engineer"
     work_order = WorkOrder(
         case_id=case.id,
         contractor_id=contractor.id,
+        engineer_id=current_user.id,
         assigned_latitude=assigned_lat,
         assigned_longitude=assigned_lng,
         priority=req.priority or "Medium",
@@ -94,8 +98,9 @@ def create_work_order(
         action="WORK_ORDER_ASSIGNED",
         entity_type="WorkOrder",
         entity_id=work_order.id,
+        actor_id=current_user.id,
         actor_name=engineer_name,
-        actor_role="WARD_ENGINEER",
+        actor_role=getattr(current_user.role, "value", "WARD_ENGINEER"),
         details={
             "case_id": case.id,
             "contractor": contractor.name,
@@ -121,7 +126,11 @@ def list_work_orders(status: Optional[str] = None, db: Session = Depends(get_db)
     return [serialize_work_order(wo) for wo in orders]
 
 @router.get("/my", response_model=List[dict])
-def get_my_work_orders(contractor_id: Optional[str] = None, db: Session = Depends(get_db)):
+def get_my_work_orders(
+    contractor_id: Optional[str] = None,
+    current_user: User = Depends(require_contractor),
+    db: Session = Depends(get_db)
+):
     """
     Returns work orders assigned to the logged-in contractor.
     """
@@ -142,7 +151,7 @@ def get_work_order_detail(work_order_id: str, db: Session = Depends(get_db)):
 def update_work_order_status(
     work_order_id: str,
     req: WorkOrderStatusUpdate,
-    contractor_name: str = "RoadWorks Unit A",
+    current_user: User = Depends(require_contractor),
     db: Session = Depends(get_db)
 ):
     wo = db.query(WorkOrder).filter(WorkOrder.id == work_order_id).first()
@@ -158,13 +167,15 @@ def update_work_order_status(
     db.commit()
     db.refresh(wo)
 
+    contractor_name = current_user.full_name or "Contractor"
     log_audit_event(
         db=db,
         action="REPAIR_STATUS_UPDATED",
         entity_type="WorkOrder",
         entity_id=wo.id,
+        actor_id=current_user.id,
         actor_name=contractor_name,
-        actor_role="CONTRACTOR",
+        actor_role=getattr(current_user.role, "value", "CONTRACTOR"),
         details={"new_status": req.status}
     )
 

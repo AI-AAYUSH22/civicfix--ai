@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, MapPin, ShieldCheck, Smartphone, Monitor } from 'lucide-react';
+import { Bell, ShieldCheck, Smartphone, Monitor } from 'lucide-react';
 import { BottomNav, CitizenTab } from '@/components/navigation/BottomNav';
 import { pageVariants } from '@/animations';
 
@@ -17,7 +17,7 @@ export const CitizenLayout: React.FC<CitizenLayoutProps> = ({
   activeTab,
   onChangeTab,
   headerTitle = 'Good morning, Citizen',
-  headerSubtitle = 'Help improve your neighbourhood in Dadar West',
+  headerSubtitle = 'Report road issues anywhere across the city for instant repair',
 }) => {
   const [frameMode, setFrameMode] = useState<boolean>(true);
 
@@ -73,18 +73,17 @@ export const CitizenLayout: React.FC<CitizenLayoutProps> = ({
         {/* Citizen Top App Header */}
         <header className="bg-white border-b border-[#E2E8F0] px-5 py-4 sticky top-0 z-20 shadow-subtle">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-[#0F766E] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-[#0F766E] text-white flex items-center justify-center font-bold text-xs shadow-sm">
                 CF
               </div>
               <div>
-                <div className="flex items-center gap-1 text-[11px] font-medium text-[#0F766E]">
-                  <MapPin size={12} />
-                  <span>Dadar West • Ward 12</span>
-                </div>
                 <h1 className="text-sm font-bold text-[#172033] leading-tight">
                   CivicFix Citizen
                 </h1>
+                <p className="text-[11px] text-[#0F766E] font-medium">
+                  Citywide Reporting Portal
+                </p>
               </div>
             </div>
 

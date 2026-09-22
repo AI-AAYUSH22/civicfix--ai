@@ -10,13 +10,20 @@ def client():
     with TestClient(app) as c:
         yield c
 
+def _get_auth_headers(client, email, password):
+    resp = client.post("/api/v1/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200
+    token = resp.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
 def test_health_endpoint(client):
     response = client.get("/api/v1/health")
     assert response.status_code == 200
     assert response.json()["status"] == "healthy"
 
 def test_municipal_stats(client):
-    response = client.get("/api/v1/municipal/stats")
+    headers = _get_auth_headers(client, "engineer@civicfix.ai", "Engineer@123")
+    response = client.get("/api/v1/municipal/stats", headers=headers)
     assert response.status_code == 200
     data = response.json()
     assert "totalActive" in data
@@ -28,6 +35,10 @@ def test_list_wards(client):
     assert len(response.json()) > 0
 
 def test_end_to_end_complaint_and_validation(client):
+    citizen_headers = _get_auth_headers(client, "citizen@civicfix.ai", "Citizen@123")
+    engineer_headers = _get_auth_headers(client, "engineer@civicfix.ai", "Engineer@123")
+    contractor_headers = _get_auth_headers(client, "contractor@civicfix.ai", "Contractor@123")
+
     # 1. Citizen submits complaint
     payload = {
         "description": "Hazardous road pothole near school gate",
@@ -37,14 +48,18 @@ def test_end_to_end_complaint_and_validation(client):
         "landmark": "Near Victoria School",
         "address": "Dadar West"
     }
-    create_resp = client.post("/api/v1/cases", data=payload)
+    create_resp = client.post("/api/v1/cases", data=payload, headers=citizen_headers)
     assert create_resp.status_code == 200
     case_data = create_resp.json()
     case_id = case_data["id"]
     assert case_data["status"] == "REPORTED"
 
     # 2. Municipal engineer validates case
-    val_resp = client.patch(f"/api/v1/cases/{case_id}/validate", json={"action": "VALIDATE", "notes": "Verified by ward patrol."})
+    val_resp = client.patch(
+        f"/api/v1/cases/{case_id}/validate",
+        json={"action": "VALIDATE", "notes": "Verified by ward patrol."},
+        headers=engineer_headers
+    )
     assert val_resp.status_code == 200
     assert val_resp.json()["status"] == "VALIDATED"
 
@@ -53,7 +68,11 @@ def test_end_to_end_complaint_and_validation(client):
     assert len(contractors) > 0
     contractor_id = contractors[0]["id"]
 
-    wo_resp = client.post("/api/v1/work-orders", json={"case_id": case_id, "contractor_id": contractor_id, "priority": "High"})
+    wo_resp = client.post(
+        "/api/v1/work-orders",
+        json={"case_id": case_id, "contractor_id": contractor_id, "priority": "High"},
+        headers=engineer_headers
+    )
     assert wo_resp.status_code == 200
     wo_data = wo_resp.json()
     wo_id = wo_data["id"]
@@ -68,7 +87,8 @@ def test_end_to_end_complaint_and_validation(client):
     before_resp = client.post(
         "/api/v1/evidence/upload",
         data={"work_order_id": wo_id, "capture_type": "BEFORE", "latitude": 19.0178, "longitude": 72.8478},
-        files={"file": ("before.jpg", img_bytes.getvalue(), "image/jpeg")}
+        files={"file": ("before.jpg", img_bytes.getvalue(), "image/jpeg")},
+        headers=contractor_headers
     )
     assert before_resp.status_code == 200
     assert before_resp.json()["case_status"] in ["GROUND_LOCKED", "REPAIRING"]

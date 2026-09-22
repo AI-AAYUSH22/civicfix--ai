@@ -4,6 +4,8 @@ from datetime import datetime
 import json
 
 from app.core.database import get_db
+from app.api.deps import get_current_user, require_municipal
+from app.models.user import User
 from app.models.work_order import WorkOrder
 from app.models.case import Case
 from app.models.verification import VerificationResult
@@ -49,6 +51,7 @@ def get_verification_details(work_order_id: str, db: Session = Depends(get_db)):
 def review_verification(
     work_order_id: str,
     req: VerificationReviewRequest,
+    current_user: User = Depends(require_municipal),
     db: Session = Depends(get_db)
 ):
     """
@@ -68,6 +71,8 @@ def review_verification(
 
     is_approved = req.decision.upper() in ["APPROVE", "APPROVED"]
 
+    engineer_name = current_user.full_name or "Ward Engineer"
+
     if is_approved:
         # Transition case to VERIFIED then CLOSED
         validate_state_transition(case.status, "VERIFIED")
@@ -76,21 +81,22 @@ def review_verification(
         wo.completed_at = datetime.utcnow()
         if vr:
             vr.status = "VERIFIED"
-            vr.summary = f"Approved by Ward Engineer ({req.engineer_name}): {req.notes or 'Repair verified satisfactory.'}"
+            vr.summary = f"Approved by Ward Engineer ({engineer_name}): {req.notes or 'Repair verified satisfactory.'}"
 
         log_audit_event(
             db=db,
             action="ENGINEER_VERIFICATION_APPROVED",
             entity_type="Case",
             entity_id=case.id,
-            actor_name=req.engineer_name or "Ward Engineer",
-            actor_role="WARD_ENGINEER",
+            actor_id=current_user.id,
+            actor_name=engineer_name,
+            actor_role=getattr(current_user.role, "value", "WARD_ENGINEER"),
             details={"work_order_id": wo.id, "notes": req.notes}
         )
         create_notification(
             db=db,
             title="Repair Approved & Case Closed",
-            message=f"Ward Engineer {req.engineer_name} approved repair for Case {case.id}. Case is now closed.",
+            message=f"Ward Engineer {engineer_name} approved repair for Case {case.id}. Case is now closed.",
             event_type="CASE_VERIFIED"
         )
     else:
@@ -99,21 +105,22 @@ def review_verification(
         wo.status = "Not Verified"
         if vr:
             vr.status = "NOT_VERIFIED"
-            vr.summary = f"Rejected by Ward Engineer ({req.engineer_name}): {req.notes or 'Repair deemed incomplete or incorrect.'}"
+            vr.summary = f"Rejected by Ward Engineer ({engineer_name}): {req.notes or 'Repair deemed incomplete or incorrect.'}"
 
         log_audit_event(
             db=db,
             action="ENGINEER_VERIFICATION_REJECTED",
             entity_type="Case",
             entity_id=case.id,
-            actor_name=req.engineer_name or "Ward Engineer",
-            actor_role="WARD_ENGINEER",
+            actor_id=current_user.id,
+            actor_name=engineer_name,
+            actor_role=getattr(current_user.role, "value", "WARD_ENGINEER"),
             details={"work_order_id": wo.id, "notes": req.notes}
         )
         create_notification(
             db=db,
             title="Repair Rejected",
-            message=f"Ward Engineer {req.engineer_name} rejected repair for Case {case.id}. Rework required.",
+            message=f"Ward Engineer {engineer_name} rejected repair for Case {case.id}. Rework required.",
             event_type="CASE_REJECTED"
         )
 

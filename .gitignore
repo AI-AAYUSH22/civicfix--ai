@@ -43,11 +43,18 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 frontend/vite.config.js
 frontend/vite.config.d.ts
+mobile/.expo/
+mobile/dist/
 
 # Uploads
 backend/uploads/complaints/
 backend/uploads/work_orders/
 backend/uploads/memos/
+
+# Uploads & Runtime media
+uploads/
+backend/uploads/work_orders/
+backend/uploads/complaints/
 
 # OS files
 .DS_Store
