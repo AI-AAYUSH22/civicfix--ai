@@ -23,13 +23,18 @@ import type { MunicipalNavSection } from '@/layouts/MunicipalLayout';
 import type { PotholeCase } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { approveExpenseMemo } from '@/services/api';
+import CityMap from '@/components/CityMap';
 
 interface MunicipalDashboardViewProps {
   activeSection: MunicipalNavSection;
+  assignedWardId?: string;
+  assignedWardName?: string;
 }
 
 export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   activeSection,
+  assignedWardId = 'G/N',
+  assignedWardName = 'Ward G/N — Dadar / Mahim',
 }) => {
   const {
     cases,
@@ -39,8 +44,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
     reviewVerificationHandler,
   } = useApp();
 
-  // Fixed jurisdictional scope: Ward Engineer assigned exclusively to Ward G/N (Dadar West / Mahim)
-  const assignedWardId = 'G/N';
+  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane' | 'Navi Mumbai'>('Mumbai');
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -268,11 +272,44 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
             </Card>
           </div>
 
-          {/* Recent Case Queue - Ward G/N Cases Only */}
+          {/* Ward GIS Map & Heatmap */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-sm text-[#172033] uppercase tracking-wider flex items-center gap-2">
+                  <MapPin size={16} className="text-[#0F766E]" />
+                  Ward GIS Map & Live Complaint Heatmap
+                </h3>
+                <p className="text-xs text-[#64748B]">Real-time geospatial visualization of pothole defects and repair statuses</p>
+              </div>
+              <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0] shadow-subtle">
+                {(['Mumbai', 'Thane', 'Navi Mumbai'] as const).map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setMapCity(c)}
+                    className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+                      mapCity === c
+                        ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-200'
+                        : 'text-slate-500 hover:bg-slate-100 border border-transparent'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="h-[380px] rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-subtle bg-white z-0" style={{ zIndex: 0 }}>
+              <CityMap cases={cases} city={mapCity} selectedWardId={assignedWardId} />
+            </div>
+          </div>
+
+          {/* Recent Case Queue - Ward Specific Cases */}
           <Card padded="md" className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-bold text-base text-[#172033]">Recent Complaints — Ward G/N</h3>
+                <h3 className="font-bold text-base text-[#172033]">Recent Complaints — {assignedWardName}</h3>
                 <p className="text-xs text-[#64748B]">Showing latest reports requiring action in your jurisdiction</p>
               </div>
               <span className="text-xs text-[#0F766E] font-semibold bg-teal-50 px-2.5 py-1 rounded-lg border border-teal-200">
