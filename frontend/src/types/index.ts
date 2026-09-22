@@ -35,7 +35,7 @@ export type CaseStatus = CivicStatus;
 export interface Ward {
   id: string;
   name: string;
-  city: 'Mumbai' | 'Thane';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
   pendingCount: number;
 }
 
@@ -76,7 +76,7 @@ export interface PotholeCase {
   wardId: string;
   location: string;
   landmark?: string;
-  city: 'Mumbai' | 'Thane';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
   coordinates: { x: number; y: number; lat?: number; lng?: number };
   severity: Severity;
   status: CaseStatus;

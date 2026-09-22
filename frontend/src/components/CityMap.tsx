@@ -1,20 +1,18 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Map as MapIcon } from 'lucide-react';
 import type { PotholeCase } from '@/types';
 import { markerColor } from '@/utils/caseUtils';
+import { useApp } from '@/context/AppContext';
 
-// Fix for default Leaflet marker icons not loading in React
-import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
-import iconUrl from 'leaflet/dist/images/marker-icon.png';
-import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
-
+// Configure Leaflet default marker icons safely without static module imports
+delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl,
-  iconUrl,
-  shadowUrl,
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
 const createCustomIcon = (color: string) => {
@@ -33,24 +31,34 @@ const legend = [
   { label: 'Resolved', color: '#2E9E6D' },
 ];
 
-function MapBounds({ cases }: { cases: PotholeCase[] }) {
+function MapBounds({ cases, selectedWardId }: { cases: PotholeCase[], selectedWardId?: string }) {
   const map = useMap();
+  const { wards } = useApp();
+
   useEffect(() => {
+    if (selectedWardId && selectedWardId !== 'all') {
+      const ward = wards.find((w: any) => w.id === selectedWardId);
+      if (ward && ward.center_lat && ward.center_lng) {
+        map.flyTo([ward.center_lat, ward.center_lng], 14, { animate: true, duration: 1.5 });
+        return;
+      }
+    }
     const validCases = cases.filter(c => c.coordinates.lat && c.coordinates.lng);
     if (validCases.length > 0) {
       const bounds = L.latLngBounds(validCases.map(c => [c.coordinates.lat!, c.coordinates.lng!]));
       map.fitBounds(bounds, { padding: [30, 30], maxZoom: 16 });
     }
-  }, [cases, map]);
+  }, [cases, map, selectedWardId, wards]);
   return null;
 }
 
 interface CityMapProps {
   cases: PotholeCase[];
-  city: 'Mumbai' | 'Thane';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
+  selectedWardId?: string;
 }
 
-export default function CityMap({ cases, city }: CityMapProps) {
+export default function CityMap({ cases, city, selectedWardId }: CityMapProps) {
   const validCases = cases.filter((c) => c.city === city && c.coordinates.lat && c.coordinates.lng);
 
   return (
@@ -80,7 +88,7 @@ export default function CityMap({ cases, city }: CityMapProps) {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          <MapBounds cases={validCases} />
+          <MapBounds cases={validCases} selectedWardId={selectedWardId} />
           {validCases.map((c) => (
             <Marker
               key={c.id}

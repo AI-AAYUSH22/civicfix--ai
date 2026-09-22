@@ -4,7 +4,7 @@ import { markerColor } from '@/utils/caseUtils';
 
 interface CityMapPlaceholderProps {
   cases: PotholeCase[];
-  city: 'Mumbai' | 'Thane';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
 }
 
 const legend = [

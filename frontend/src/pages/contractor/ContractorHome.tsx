@@ -53,8 +53,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
   const [submittingMemo, setSubmittingMemo] = useState(false);
   const [memoSyncResult, setMemoSyncResult] = useState<any | null>(null);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -217,11 +215,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     } finally {
       setUploading(false);
     }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Gallery upload is disabled for contractors. They must use the live camera.
-    alert('Gallery uploads are disabled for contractors. Please use the live camera to capture evidence.');
   };
 
   const handleUploadEvidence = async () => {

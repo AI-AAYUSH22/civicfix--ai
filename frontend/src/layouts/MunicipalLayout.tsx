@@ -7,7 +7,6 @@ import {
   Users,
   Search,
   Bell,
-  Building2,
   Menu,
   X,
 } from 'lucide-react';
@@ -112,17 +111,7 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
             </div>
           </div>
 
-          <div className="mt-4 p-2.5 rounded-xl bg-[#0F172A] border border-slate-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Building2 size={14} className="text-teal-400" />
-              <span className="text-xs text-slate-200 font-medium truncate max-w-[130px]">
-                {selectedWard.split('—')[0] || selectedWard}
-              </span>
-            </div>
-            <span className="text-[10px] font-medium text-emerald-400 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-800">
-              Live
-            </span>
-          </div>
+
         </div>
 
         {/* Navigation Links */}

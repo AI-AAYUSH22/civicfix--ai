@@ -10,7 +10,7 @@ import { computeStats } from '@/utils/caseUtils';
 
 export default function Dashboard() {
   const [selectedWardId, setSelectedWardId] = useState<string | 'all'>('all');
-  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane'>('Mumbai');
+  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane' | 'Navi Mumbai'>('Mumbai');
 
   const filteredCases = useMemo(() => getCasesByWard(selectedWardId), [selectedWardId]);
   const stats = useMemo(() => computeStats(filteredCases), [filteredCases]);
@@ -46,12 +46,14 @@ export default function Dashboard() {
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="mb-2 flex items-center gap-1.5 rounded-lg bg-base-surface p-1 shadow-soft w-fit">
-              {(['Mumbai', 'Thane'] as const).map((c) => (
+              {(['Mumbai', 'Thane', 'Navi Mumbai'] as const).map((c) => (
                 <button
                   key={c}
                   onClick={() => setMapCity(c)}
-                  className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                    mapCity === c ? 'bg-navy-600 text-white' : 'text-navy-400 hover:text-navy-600'
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    mapCity === c
+                      ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-200'
+                      : 'text-slate-500 hover:bg-slate-100 border border-transparent'
                   }`}
                 >
                   {c}

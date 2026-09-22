@@ -8,6 +8,7 @@ KNOWN_MUNICIPAL_ZONES = [
     {"neighborhood": "Andheri East", "ward": "w18", "lat": 19.1136, "lng": 72.8697, "keywords": ["andheri", "sahar road", "chakala", "marol", "metro pillar", "jb nagar"]},
     {"neighborhood": "Kurla West", "ward": "w05", "lat": 19.0726, "lng": 72.8845, "keywords": ["kurla", "cst road", "kamani", "phoenix marketcity", "lbs marg"]},
     {"neighborhood": "Thane Naupada", "ward": "w03", "lat": 19.1904, "lng": 72.9723, "keywords": ["naupada", "thane", "gokhale road thane", "talao pali", "vandana cinema"]},
+    {"neighborhood": "Navi Mumbai Vashi", "ward": "v11", "lat": 19.0700, "lng": 72.9980, "keywords": ["vashi", "navi mumbai", "palm beach road", "inorbit mall vashi"]},
     {"neighborhood": "Ghodbunder Road", "ward": "w08", "lat": 19.2482, "lng": 72.9558, "keywords": ["ghodbunder", "kasarvadavali", "waghbil", "manpada", "brahmand"]},
 ]
 
