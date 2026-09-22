@@ -136,7 +136,7 @@ def seed_database(db: Session):
     db.flush()
 
     # 3. Wards
-        wards_data = [
+    wards_data = [
         {"name": "Ward A - Churchgate, Colaba, Fort", "code": "A", "city": "Mumbai", "lat": 18.922, "lng": 72.8347},
         {"name": "Ward B - Masjid Bunder, Dongri", "code": "B", "city": "Mumbai", "lat": 18.9515, "lng": 72.8375},
         {"name": "Ward C - Pydhonie, Bhuleshwar", "code": "C", "city": "Mumbai", "lat": 18.9525, "lng": 72.8273},
@@ -200,17 +200,6 @@ def seed_database(db: Session):
         (wards[26], "Ghodbunder Highway"),
         (wards[36], "Palm Beach Road"),
         (wards[34], "Nerul Station Road"),
-    ], "Gokhale Road North"),
-        (wards[0], "Ranade Road"),
-        (wards[1], "Hill Road"),
-        (wards[1], "Linking Road"),
-        (wards[2], "Sahar Road"),
-        (wards[2], "Andheri-Kurla Road"),
-        (wards[3], "LBS Marg"),
-        (wards[4], "Gokhale Road Thane"),
-        (wards[5], "Ghodbunder Highway"),
-        (wards[6], "Palm Beach Road"),
-        (wards[7], "Nerul Station Road"),
     ]
     roads = []
     for ward, road_name in roads_data:

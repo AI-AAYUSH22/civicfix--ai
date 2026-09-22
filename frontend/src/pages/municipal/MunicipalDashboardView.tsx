@@ -270,7 +270,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
             </div>
 
             <div className="h-[360px] rounded-2xl overflow-hidden border border-[#E2E8F0] shadow-subtle bg-white z-0" style={{ zIndex: 0 }}>
-              <CityMap cases={filteredCases} city={mapCity} />
+              <CityMap cases={filteredCases} city={mapCity} selectedWardId={selectedWardId} />
             </div>
           </div>
 
