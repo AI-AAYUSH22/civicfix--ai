@@ -328,6 +328,37 @@ def seed_database(db: Session):
     db.add(wo2)
     db.flush()
 
+    ev_before2 = EvidenceFile(
+        id="EV-1025-B",
+        case_id=case_review.id,
+        work_order_id=wo2.id,
+        contractor_id=c1.id,
+        capture_type="BEFORE",
+        storage_path=demo_images["before"],
+        file_name="pothole_before_demo.jpg",
+        file_hash="hash_before_1025",
+        latitude=19.01955,
+        longitude=72.84655,
+        captured_at=now - timedelta(days=2),
+        validation_status="VALID"
+    )
+    ev_after2 = EvidenceFile(
+        id="EV-1025-A",
+        case_id=case_review.id,
+        work_order_id=wo2.id,
+        contractor_id=c1.id,
+        capture_type="AFTER",
+        storage_path=demo_images["after_unrepaired"],
+        file_name="pothole_after_unrepaired_demo.jpg",
+        file_hash="hash_after_1025",
+        latitude=19.01959,
+        longitude=72.84659,
+        captured_at=now - timedelta(hours=3),
+        validation_status="VALID"
+    )
+    db.add_all([ev_before2, ev_after2])
+    db.flush()
+
     vr2 = VerificationResult(
         id="VR-1025",
         case_id=case_review.id,
