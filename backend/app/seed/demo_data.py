@@ -13,7 +13,7 @@ from app.models.case import Case, CaseLocation
 from app.models.work_order import WorkOrder
 from app.models.evidence import EvidenceFile
 from app.models.verification import VerificationResult, VerificationCheck
-from app.models.audit import AuditLog
+from app.models.audit import AuditLog, EngineerWardAssignment
 from app.services.audit_service import log_audit_event
 
 
@@ -95,14 +95,14 @@ def seed_database(db: Session):
     """
     # Ensure all demo users exist even if DB was previously created
     for u_data in [
-        ("citizen@civicfix.org", "Aarav Sharma", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"]),
-        ("contractor@roadworks.in", "RoadWorks Unit A", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"]),
-        ("engineer@mcgm.gov.in", "Er. Rajesh Kulkarni", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"]),
-        ("admin@civicfix.org", "CivicFix Admin", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"]),
-        ("citizen@civicfix.ai", "Aarav Sharma (AI)", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"]),
-        ("contractor@civicfix.ai", "RoadWorks Unit A (AI)", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"]),
-        ("engineer@civicfix.ai", "Er. Rajesh Kulkarni (AI)", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"]),
-        ("admin@civicfix.ai", "CivicFix Admin (AI)", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"]),
+        ("citizen@civicfix.org", "Aarav Sharma", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"], None, None),
+        ("contractor@roadworks.in", "RoadWorks Unit A", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"], None, "CONT-ROAD-01"),
+        ("engineer@mcgm.gov.in", "Er. Rajesh Kulkarni", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"], "BMC-ENG-4001", None),
+        ("admin@civicfix.org", "CivicFix Admin", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"], "BMC-ADM-1001", None),
+        ("citizen@civicfix.ai", "Aarav Sharma (AI)", UserRole.CITIZEN, "+91 98200 12345", DEMO_PASSWORDS["citizen"], None, None),
+        ("contractor@civicfix.ai", "RoadWorks Unit A (AI)", UserRole.CONTRACTOR, "+91 98201 67890", DEMO_PASSWORDS["contractor"], None, "CONT-ROAD-01"),
+        ("engineer@civicfix.ai", "Er. Rajesh Kulkarni (AI)", UserRole.WARD_ENGINEER, "+91 98202 34567", DEMO_PASSWORDS["engineer"], "BMC-ENG-4001", None),
+        ("admin@civicfix.ai", "CivicFix Admin (AI)", UserRole.ADMIN, "+91 98203 98765", DEMO_PASSWORDS["admin"], "BMC-ADM-1001", None),
     ]:
         existing = db.query(User).filter(User.email == u_data[0]).first()
         if not existing:
@@ -112,10 +112,51 @@ def seed_database(db: Session):
                 role=u_data[2],
                 phone=u_data[3],
                 hashed_password=hash_password(u_data[4]),
+                employee_id=u_data[5],
+                contractor_id=u_data[6],
                 is_active=True
             ))
-        elif not existing.hashed_password:
-            existing.hashed_password = hash_password(u_data[4])
+        else:
+            if not existing.hashed_password:
+                existing.hashed_password = hash_password(u_data[4])
+            if u_data[5] and not existing.employee_id:
+                existing.employee_id = u_data[5]
+            if u_data[6] and not existing.contractor_id:
+                existing.contractor_id = u_data[6]
+    db.commit()
+
+    # Seed Engineer Ward Assignment History if missing
+    for assign_data in [
+        {
+            "employee_id": "BMC-ENG-4001",
+            "engineer_name": "Er. Rajesh Kulkarni",
+            "engineer_email": "engineer@mcgm.gov.in",
+            "ward_id": "G/N",
+            "ward_name": "Ward G/N — Dadar / Mahim / Dharavi",
+            "assigned_by": "Municipal Commissioner Office (Ref: MCGM/RD/2026/G-N-04)",
+            "is_current": True,
+            "start_date": datetime(2026, 1, 1),
+            "notes": "Official jurisdictional assignment for Ward G/N Road Maintenance",
+        },
+        {
+            "employee_id": "BMC-ENG-4001",
+            "engineer_name": "Er. Rajesh Kulkarni",
+            "engineer_email": "engineer@mcgm.gov.in",
+            "ward_id": "F/N",
+            "ward_name": "Ward F/N — Matunga / Sion / Wadala",
+            "assigned_by": "Municipal Commissioner Office (Ref: MCGM/RD/2025/F-N-12)",
+            "is_current": False,
+            "start_date": datetime(2025, 1, 1),
+            "end_date": datetime(2025, 12, 31),
+            "notes": "Previous historical assignment completed successfully with zero backlog",
+        },
+    ]:
+        existing_assign = db.query(EngineerWardAssignment).filter(
+            EngineerWardAssignment.employee_id == assign_data["employee_id"],
+            EngineerWardAssignment.ward_id == assign_data["ward_id"]
+        ).first()
+        if not existing_assign:
+            db.add(EngineerWardAssignment(**assign_data))
     db.commit()
 
     # Check if already seeded
@@ -202,37 +243,8 @@ def seed_database(db: Session):
     db.add_all(contractors)
     db.flush()
 
-    # 3. Wards — All 27 Municipal Wards of Mumbai
+    # 3. Wards — All 41 Municipal Wards of Mumbai, Thane, and Navi Mumbai
     wards_data = [
-<<<<<<< HEAD
-        {"name": "Ward A — Colaba / Churchgate / Fort", "code": "A", "city": "Mumbai", "lat": 18.9220, "lng": 72.8347},
-        {"name": "Ward B — Sandhurst Road / Dongri / Mazgaon", "code": "B", "city": "Mumbai", "lat": 18.9532, "lng": 72.8397},
-        {"name": "Ward C — Marine Lines / Bhuleshwar / Pydhonie", "code": "C", "city": "Mumbai", "lat": 18.9500, "lng": 72.8250},
-        {"name": "Ward D — Malabar Hill / Tardeo / Girgaon", "code": "D", "city": "Mumbai", "lat": 18.9667, "lng": 72.8167},
-        {"name": "Ward E — Byculla / Mumbai Central / Nagpada", "code": "E", "city": "Mumbai", "lat": 18.9750, "lng": 72.8300},
-        {"name": "Ward F/N — Matunga / Sion / Wadala", "code": "F/N", "city": "Mumbai", "lat": 19.0333, "lng": 72.8550},
-        {"name": "Ward F/S — Parel / Sewri / Lalbaug", "code": "F/S", "city": "Mumbai", "lat": 19.0000, "lng": 72.8400},
-        {"name": "Ward G/N — Dadar / Mahim / Dharavi", "code": "G/N", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
-        {"name": "Ward G/S — Worli / Prabhadevi / Lower Parel", "code": "G/S", "city": "Mumbai", "lat": 19.0100, "lng": 72.8200},
-        {"name": "Ward H/E — Santacruz East / Khar East / Vakola", "code": "H/E", "city": "Mumbai", "lat": 19.0800, "lng": 72.8550},
-        {"name": "Ward H/W — Bandra West / Khar West", "code": "H/W", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
-        {"name": "Ward K/E — Andheri East / Marol / Sakinaka", "code": "K/E", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
-        {"name": "Ward K/W — Andheri West / Juhu / Versova", "code": "K/W", "city": "Mumbai", "lat": 19.1200, "lng": 72.8250},
-        {"name": "Ward L — Kurla West / Sakinaka / Asalpha", "code": "L", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
-        {"name": "Ward M/E — Chembur East / Govandi / Mankhurd", "code": "M/E", "city": "Mumbai", "lat": 19.0550, "lng": 72.9100},
-        {"name": "Ward M/W — Chembur West / Tilak Nagar", "code": "M/W", "city": "Mumbai", "lat": 19.0600, "lng": 72.8950},
-        {"name": "Ward N — Ghatkopar / Vidyavihar / Pant Nagar", "code": "N", "city": "Mumbai", "lat": 19.0850, "lng": 72.9080},
-        {"name": "Ward P/N — Malad West / Marve / Manori", "code": "P/N", "city": "Mumbai", "lat": 19.1860, "lng": 72.8485},
-        {"name": "Ward P/S — Goregaon East & West / Aarey Colony", "code": "P/S", "city": "Mumbai", "lat": 19.1630, "lng": 72.8420},
-        {"name": "Ward R/C — Borivali West / Gorai / Charkop", "code": "R/C", "city": "Mumbai", "lat": 19.2300, "lng": 72.8550},
-        {"name": "Ward R/N — Dahisar / Borivali North", "code": "R/N", "city": "Mumbai", "lat": 19.2550, "lng": 72.8600},
-        {"name": "Ward R/S — Kandivali East & West / Poisar", "code": "R/S", "city": "Mumbai", "lat": 19.2050, "lng": 72.8500},
-        {"name": "Ward S — Bhandup / Powai / Kanjurmarg / Vikhroli", "code": "S", "city": "Mumbai", "lat": 19.1400, "lng": 72.9300},
-        {"name": "Ward T — Mulund / Nahur", "code": "T", "city": "Mumbai", "lat": 19.1720, "lng": 72.9550},
-        {"name": "Ward K/E-2 — Jogeshwari East", "code": "K/E-2", "city": "Mumbai", "lat": 19.1350, "lng": 72.8600},
-        {"name": "Ward L-2 — Chandivali / Powai South", "code": "L-2", "city": "Mumbai", "lat": 19.1100, "lng": 72.8900},
-        {"name": "Ward P/N-2 — Dindoshi / Malad East", "code": "P/N-2", "city": "Mumbai", "lat": 19.1750, "lng": 72.8700},
-=======
         {"name": "Ward A - Churchgate, Colaba, Fort", "code": "A", "city": "Mumbai", "lat": 18.922, "lng": 72.8347},
         {"name": "Ward B - Masjid Bunder, Dongri", "code": "B", "city": "Mumbai", "lat": 18.9515, "lng": 72.8375},
         {"name": "Ward C - Pydhonie, Bhuleshwar", "code": "C", "city": "Mumbai", "lat": 18.9525, "lng": 72.8273},
@@ -274,7 +286,6 @@ def seed_database(db: Session):
         {"name": "Ghansoli", "code": "NMMC-6", "city": "Navi Mumbai", "lat": 19.1254, "lng": 72.9992},
         {"name": "Airoli", "code": "NMMC-7", "city": "Navi Mumbai", "lat": 19.1517, "lng": 72.9934},
         {"name": "Digha", "code": "NMMC-8", "city": "Navi Mumbai", "lat": 19.1678, "lng": 72.993},
->>>>>>> origin/feature/ai-and-map-updates
     ]
 
     wards = []

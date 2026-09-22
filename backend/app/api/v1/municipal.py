@@ -93,3 +93,40 @@ def get_global_audit_logs(
         }
         for l in logs
     ]
+
+
+@router.get("/assignments", response_model=List[Dict[str, Any]])
+def list_ward_assignments(
+    employee_id: str | None = None,
+    current_user: User = Depends(require_municipal),
+    db: Session = Depends(get_db)
+):
+    """
+    Municipal Employee Registry: Returns ward assignment history.
+    Enforces accountability across transitions while preserving historical records.
+    """
+    from app.models.audit import EngineerWardAssignment
+    query = db.query(EngineerWardAssignment)
+    if employee_id:
+        query = query.filter(EngineerWardAssignment.employee_id == employee_id)
+    elif current_user.employee_id:
+        query = query.filter(EngineerWardAssignment.employee_id == current_user.employee_id)
+    
+    records = query.order_by(EngineerWardAssignment.start_date.desc()).all()
+    return [
+        {
+            "id": r.id,
+            "employee_id": r.employee_id,
+            "engineer_name": r.engineer_name,
+            "engineer_email": r.engineer_email,
+            "ward_id": r.ward_id,
+            "ward_name": r.ward_name,
+            "assigned_by": r.assigned_by,
+            "is_current": r.is_current,
+            "start_date": r.start_date.isoformat() if r.start_date else None,
+            "end_date": r.end_date.isoformat() if r.end_date else None,
+            "notes": r.notes,
+        }
+        for r in records
+    ]
+

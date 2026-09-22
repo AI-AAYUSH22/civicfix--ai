@@ -23,6 +23,9 @@ interface MunicipalLayoutProps {
   activeSection: MunicipalNavSection;
   onSelectSection: (section: MunicipalNavSection) => void;
   selectedWard?: string;
+  userName?: string;
+  employeeId?: string;
+  onLogout?: () => void;
 }
 
 export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
@@ -30,6 +33,9 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
   activeSection,
   onSelectSection,
   selectedWard = 'Ward G/N — Dadar West / Mahim',
+  userName = 'Er. Rajesh Kulkarni',
+  employeeId = 'BMC-ENG-4001',
+  onLogout,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -212,17 +218,26 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D97706]" />
             </button>
 
-            {/* Officer Profile */}
+            {/* Officer Profile & Logout */}
             <div className="flex items-center gap-2.5 pl-2 border-l border-[#E2E8F0]">
-              <div className="w-8 h-8 rounded-full bg-[#172033] text-white flex items-center justify-center font-semibold text-xs">
-                RS
+              <div className="w-8 h-8 rounded-full bg-[#172033] text-teal-400 flex items-center justify-center font-bold text-xs border border-teal-800">
+                {userName.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
               <div className="hidden sm:block text-left">
                 <p className="text-xs font-semibold text-[#172033] leading-none">
-                  Eng. R. Shinde
+                  {userName}
                 </p>
-                <p className="text-[11px] text-[#64748B] mt-0.5">Ward Engineer</p>
+                <p className="text-[10px] text-[#0F766E] font-mono mt-0.5">{employeeId}</p>
               </div>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  className="ml-2 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-red-600 hover:bg-red-50 border border-slate-200 transition-colors"
+                  title="Sign out of Municipal Dashboard"
+                >
+                  Sign Out
+                </button>
+              )}
             </div>
           </div>
         </header>

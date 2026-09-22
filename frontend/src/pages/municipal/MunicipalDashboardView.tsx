@@ -27,21 +27,35 @@ import { approveExpenseMemo } from '@/services/api';
 
 interface MunicipalDashboardViewProps {
   activeSection: MunicipalNavSection;
+  assignedWardId?: string;
+  assignedWardName?: string;
 }
 
 export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   activeSection,
+  assignedWardId: propWardId,
+  assignedWardName: propWardName,
 }) => {
   const {
     cases,
     contractors,
+    currentUser,
+    wardAssignments,
     validateCaseHandler,
     assignWorkOrderHandler,
     reviewVerificationHandler,
   } = useApp();
 
-  // Fixed jurisdictional scope: Ward Engineer assigned exclusively to Ward G/N (Dadar West / Mahim)
-  const assignedWardId = 'G/N';
+  // Dynamically derive jurisdictional ward from authenticated user assignment
+  const assignedWardId =
+    propWardId ||
+    currentUser?.assigned_ward?.ward_id ||
+    'G/N';
+  const assignedWardName =
+    propWardName ||
+    currentUser?.assigned_ward?.ward_name ||
+    'Ward G/N — Dadar / Mahim / Dharavi';
+
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -221,7 +235,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
               <MapPin size={14} className="text-[#0F766E]" />
               <div>
                 <span className="text-[10px] uppercase font-bold text-[#64748B] block leading-none">Assigned Jurisdiction</span>
-                <span className="text-xs font-bold text-[#172033]">Ward G/N — Dadar / Mahim</span>
+                <span className="text-xs font-bold text-[#172033]">{assignedWardName}</span>
               </div>
             </div>
           </div>
@@ -326,6 +340,77 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </Card>
+
+          {/* 4. Engineer Ward Assignment History (Audit Track) */}
+          <Card padded="md" className="space-y-3">
+            <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={18} className="text-[#0F766E]" />
+                <div>
+                  <h3 className="text-sm font-bold text-[#172033]">
+                    Official Ward Assignment Registry & History
+                  </h3>
+                  <p className="text-[11px] text-[#64748B]">
+                    Immutable audit record of jurisdictional postings for Engineer {currentUser?.employee_id || 'BMC-ENG-4001'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
+                MCGM HR Registry Linked
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              {wardAssignments.length > 0 ? (
+                wardAssignments.map((asgn) => (
+                  <div
+                    key={asgn.id}
+                    className={`p-3 rounded-xl border flex flex-col justify-between text-xs transition-all ${
+                      asgn.is_current
+                        ? 'bg-teal-50/40 border-teal-200 shadow-sm'
+                        : 'bg-slate-50 border-slate-200 opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[#172033]">{asgn.ward_name}</span>
+                          {asgn.is_current && (
+                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Active Post
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-[#64748B] block mt-0.5">
+                          Ward ID: {asgn.ward_id} • Assigned by MCGM Chief Engineer
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-500 font-mono">
+                        {asgn.start_date} → {asgn.end_date || 'Present'}
+                      </span>
+                    </div>
+                    {asgn.notes && (
+                      <p className="text-[11px] text-slate-600 mt-2 bg-white/70 p-1.5 rounded border border-slate-200/60">
+                        {asgn.notes}
+                      </p>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="p-3 bg-teal-50/50 border border-teal-200 rounded-xl text-xs col-span-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[#172033]">{assignedWardName}</span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                      Active Post
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-[#64748B] block mt-0.5">
+                    Ward Code: {assignedWardId} • Jurisdiction: Dadar, Mahim, Dharavi
+                  </span>
+                </div>
+              )}
             </div>
           </Card>
         </div>

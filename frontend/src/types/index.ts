@@ -121,4 +121,4 @@ export interface DashboardStats {
   resolvedThisMonth: number;
 }
 
-export type AppSurface = 'citizen' | 'contractor' | 'municipal' | 'showcase' | 'evidence' | 'verification';
+export type AppSurface = 'landing' | 'login' | 'citizen' | 'contractor' | 'municipal' | 'showcase' | 'evidence' | 'verification';

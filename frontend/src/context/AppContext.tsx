@@ -27,6 +27,10 @@ interface AppContextType {
   wards: any[];
   contractors: any[];
   stats: ApiStats;
+  currentUser: any | null;
+  wardAssignments: any[];
+  loginEngineer: (employeeId: string, password: string) => Promise<any>;
+  logout: () => void;
   refreshData: () => Promise<void>;
   submitComplaint: (formData: FormData) => Promise<ApiCase>;
   ingestSocialHandler: (rawText: string, channel: 'REDDIT' | 'WHATSAPP', file?: File) => Promise<any>;
@@ -138,6 +142,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [wards, setWards] = useState<any[]>(mockWards);
   const [contractors, setContractors] = useState<any[]>([]);
 
+  const [currentUser, setCurrentUser] = useState<any | null>(() => {
+    const saved = localStorage.getItem('civicfix_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [wardAssignments, setWardAssignments] = useState<any[]>([]);
+
+  const loginEngineer = async (employeeId: string, password: string) => {
+    const { loginWithEmployeeId, getWardAssignments } = await import('@/services/api');
+    const res = await loginWithEmployeeId(employeeId, password);
+    setCurrentUser(res.user);
+    localStorage.setItem('civicfix_user', JSON.stringify(res.user));
+    try {
+      const assigns = await getWardAssignments(res.user.employee_id);
+      setWardAssignments(assigns);
+    } catch {
+      // assignment optional
+    }
+    await refreshData();
+    return res;
+  };
+
+  const logout = () => {
+    import('@/services/api').then(({ setAuthToken }) => setAuthToken(null));
+    setCurrentUser(null);
+    setWardAssignments([]);
+    localStorage.removeItem('civicfix_user');
+  };
+
   const refreshData = useCallback(async () => {
     try {
       const isHealthy = await checkBackendHealth();
@@ -247,6 +279,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         stats,
         wards,
         contractors,
+        currentUser,
+        wardAssignments,
+        loginEngineer,
+        logout,
         refreshData,
         submitComplaint,
         ingestSocialHandler,

@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 class LoginRequest(BaseModel):
-    email: str
+    email: str = Field(description="Email or Employee ID (e.g. BMC-ENG-4001 or CONT-ROAD-01)")
     password: str
 
 
@@ -19,6 +19,15 @@ class RegisterRequest(BaseModel):
         return v
 
 
+class WardAssignmentOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    ward_id: str
+    ward_name: str
+    assigned_by: str | None = None
+    start_date: str | None = None
+
+
 class UserOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -26,6 +35,9 @@ class UserOut(BaseModel):
     name: str
     email: str
     role: str
+    employee_id: str | None = None
+    contractor_id: str | None = None
+    assigned_ward: WardAssignmentOut | None = None
 
 
 class Token(BaseModel):

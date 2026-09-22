@@ -108,6 +108,81 @@ export interface ApiTimelineItem {
   details: Record<string, any>;
 }
 
+// ----------------- AUTH & TOKEN MANAGEMENT -----------------
+let _authToken: string | null = localStorage.getItem('civicfix_token');
+
+export function setAuthToken(token: string | null) {
+  _authToken = token;
+  if (token) {
+    localStorage.setItem('civicfix_token', token);
+  } else {
+    localStorage.removeItem('civicfix_token');
+  }
+}
+
+export function getAuthToken(): string | null {
+  return _authToken || localStorage.getItem('civicfix_token');
+}
+
+export function getAuthHeaders(): HeadersInit {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+export interface ApiAuthUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  employee_id?: string;
+  contractor_id?: string;
+  assigned_ward?: {
+    ward_id: string;
+    ward_name: string;
+    assigned_by?: string;
+    start_date?: string;
+  };
+}
+
+export interface ApiTokenResponse {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  user: ApiAuthUser;
+}
+
+export async function loginWithEmployeeId(identifier: string, password: string): Promise<ApiTokenResponse> {
+  const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: identifier, password }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Invalid credentials');
+  }
+  const data: ApiTokenResponse = await res.json();
+  setAuthToken(data.access_token);
+  return data;
+}
+
+export async function getCurrentUser(): Promise<ApiAuthUser> {
+  const res = await fetch(`${API_BASE_URL}/auth/users/me`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch user session');
+  return res.json();
+}
+
+export async function getWardAssignments(employeeId?: string): Promise<any[]> {
+  const query = employeeId ? `?employee_id=${encodeURIComponent(employeeId)}` : '';
+  const res = await fetch(`${API_BASE_URL}/municipal/assignments${query}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error(`Failed to load ward assignments: ${res.statusText}`);
+  return res.json();
+}
+
 // ----------------- API METHODS -----------------
 
 export async function checkBackendHealth(): Promise<boolean> {
@@ -120,19 +195,25 @@ export async function checkBackendHealth(): Promise<boolean> {
 }
 
 export async function getMunicipalStats(): Promise<ApiStats> {
-  const res = await fetch(`${API_BASE_URL}/municipal/stats`);
+  const res = await fetch(`${API_BASE_URL}/municipal/stats`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load stats: ${res.statusText}`);
   return res.json();
 }
 
 export async function getWards(): Promise<any[]> {
-  const res = await fetch(`${API_BASE_URL}/municipal/wards`);
+  const res = await fetch(`${API_BASE_URL}/municipal/wards`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load wards: ${res.statusText}`);
   return res.json();
 }
 
 export async function getContractors(): Promise<any[]> {
-  const res = await fetch(`${API_BASE_URL}/municipal/contractors`);
+  const res = await fetch(`${API_BASE_URL}/municipal/contractors`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load contractors: ${res.statusText}`);
   return res.json();
 }
@@ -175,7 +256,7 @@ export async function createCitizenComplaint(formData: FormData): Promise<ApiCas
 export async function validateCase(caseId: string, action: 'VALIDATE' | 'REJECT', notes?: string): Promise<ApiCase> {
   const res = await fetch(`${API_BASE_URL}/cases/${caseId}/validate`, {
     method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ action, notes }),
   });
   if (!res.ok) throw new Error(`Failed to validate case: ${res.statusText}`);
@@ -184,7 +265,9 @@ export async function validateCase(caseId: string, action: 'VALIDATE' | 'REJECT'
 
 export async function getWorkOrders(status?: string): Promise<ApiWorkOrder[]> {
   const query = status ? `?status=${encodeURIComponent(status)}` : '';
-  const res = await fetch(`${API_BASE_URL}/work-orders${query}`);
+  const res = await fetch(`${API_BASE_URL}/work-orders${query}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load work orders: ${res.statusText}`);
   return res.json();
 }
@@ -192,7 +275,7 @@ export async function getWorkOrders(status?: string): Promise<ApiWorkOrder[]> {
 export async function createWorkOrder(caseId: string, contractorId: string, priority: string = 'High'): Promise<ApiWorkOrder> {
   const res = await fetch(`${API_BASE_URL}/work-orders`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ case_id: caseId, contractor_id: contractorId, priority }),
   });
   if (!res.ok) {
@@ -205,6 +288,7 @@ export async function createWorkOrder(caseId: string, contractorId: string, prio
 export async function uploadEvidence(formData: FormData): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/evidence/upload`, {
     method: 'POST',
+    headers: getAuthHeaders(),
     body: formData,
   });
   if (!res.ok) {
@@ -215,7 +299,9 @@ export async function uploadEvidence(formData: FormData): Promise<any> {
 }
 
 export async function getVerification(workOrderId: string): Promise<ApiVerificationResult> {
-  const res = await fetch(`${API_BASE_URL}/verification/${workOrderId}`);
+  const res = await fetch(`${API_BASE_URL}/verification/${workOrderId}`, {
+    headers: getAuthHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to fetch verification: ${res.statusText}`);
   return res.json();
 }
@@ -227,7 +313,7 @@ export async function reviewVerification(
 ): Promise<any> {
   const res = await fetch(`${API_BASE_URL}/verification/${workOrderId}/review`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
     body: JSON.stringify({ decision, notes, engineer_name: 'Er. Rajesh Kulkarni' }),
   });
   if (!res.ok) throw new Error(`Failed to submit review: ${res.statusText}`);

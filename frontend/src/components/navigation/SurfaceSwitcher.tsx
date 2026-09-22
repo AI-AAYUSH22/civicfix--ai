@@ -13,6 +13,12 @@ export const SurfaceSwitcher: React.FC<SurfaceSwitcherProps> = ({
 }) => {
   const surfaces: { id: AppSurface; label: string; icon: React.ReactNode; badge?: string }[] = [
     {
+      id: 'landing',
+      label: 'Home',
+      icon: <Building2 size={16} />,
+      badge: 'Portal',
+    },
+    {
       id: 'citizen',
       label: 'Citizen App',
       icon: <Smartphone size={16} />,
