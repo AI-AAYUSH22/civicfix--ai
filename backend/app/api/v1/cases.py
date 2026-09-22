@@ -67,6 +67,7 @@ async def create_case(
     address: Optional[str] = Form(None),
     reporter_email: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
+    ward_id: Optional[str] = Form(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -82,6 +83,10 @@ async def create_case(
 
     # 2. Map GPS to Ward and Road
     ward, road = find_nearest_ward_and_road(db, latitude, longitude)
+    if ward_id:
+        custom_ward = db.query(Ward).filter(Ward.id == ward_id).first()
+        if custom_ward:
+            ward = custom_ward
 
     # 3. Create Case
     title = f"Pothole near {landmark}" if landmark else (f"Pothole on {road.name}" if road else "Road surface defect")

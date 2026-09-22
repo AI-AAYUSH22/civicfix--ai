@@ -13,7 +13,6 @@ import {
   Clock,
   MapPin,
   Activity,
-  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -27,46 +26,27 @@ import { approveExpenseMemo } from '@/services/api';
 
 interface MunicipalDashboardViewProps {
   activeSection: MunicipalNavSection;
-  assignedWardId?: string;
-  assignedWardName?: string;
 }
 
 export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   activeSection,
-  assignedWardId: propWardId,
-  assignedWardName: propWardName,
 }) => {
   const {
     cases,
     contractors,
-    currentUser,
-    wardAssignments,
     validateCaseHandler,
     assignWorkOrderHandler,
     reviewVerificationHandler,
   } = useApp();
 
-  // Dynamically derive jurisdictional ward from authenticated user assignment
-  const assignedWardId =
-    propWardId ||
-    currentUser?.assigned_ward?.ward_id ||
-    'G/N';
-  const assignedWardName =
-    propWardName ||
-    currentUser?.assigned_ward?.ward_name ||
-    'Ward G/N — Dadar / Mahim / Dharavi';
-
+  // Fixed jurisdictional scope: Ward Engineer assigned exclusively to Ward G/N (Dadar West / Mahim)
+  const assignedWardId = 'G/N';
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigningContractorId, setAssigningContractorId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // New UI states
-  const [zoomedImage, setZoomedImage] = useState<{ src: string; alt: string } | null>(null);
-  const [rejectingWorkOrderId, setRejectingWorkOrderId] = useState<string | null>(null);
-  const [rejectionNotes, setRejectionNotes] = useState('');
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -184,15 +164,11 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   };
 
   // Handle Verification Review
-  const handleReviewVerification = async (woId: string, decision: 'APPROVE' | 'REJECT', notes?: string) => {
+  const handleReviewVerification = async (woId: string, decision: 'APPROVE' | 'REJECT') => {
     setActionLoading(true);
     try {
-      await reviewVerificationHandler(woId, decision, notes || (decision === 'APPROVE' ? 'Approved by Ward Engineer' : 'Rejected for rework'));
+      await reviewVerificationHandler(woId, decision, decision === 'APPROVE' ? 'Approved by Ward Engineer' : 'Rejected for rework');
       showToast(`Verification ${decision === 'APPROVE' ? 'Approved — Case Closed' : 'Rejected — Sent for Rework'}.`);
-      if (decision === 'REJECT') {
-        setRejectingWorkOrderId(null);
-        setRejectionNotes('');
-      }
     } catch (err: any) {
       alert(err.message || 'Review action failed');
     } finally {
@@ -235,7 +211,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
               <MapPin size={14} className="text-[#0F766E]" />
               <div>
                 <span className="text-[10px] uppercase font-bold text-[#64748B] block leading-none">Assigned Jurisdiction</span>
-                <span className="text-xs font-bold text-[#172033]">{assignedWardName}</span>
+                <span className="text-xs font-bold text-[#172033]">Ward G/N — Dadar / Mahim</span>
               </div>
             </div>
           </div>
@@ -340,77 +316,6 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                   </div>
                 </div>
               ))}
-            </div>
-          </Card>
-
-          {/* 4. Engineer Ward Assignment History (Audit Track) */}
-          <Card padded="md" className="space-y-3">
-            <div className="flex items-center justify-between border-b border-[#F1F5F9] pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={18} className="text-[#0F766E]" />
-                <div>
-                  <h3 className="text-sm font-bold text-[#172033]">
-                    Official Ward Assignment Registry & History
-                  </h3>
-                  <p className="text-[11px] text-[#64748B]">
-                    Immutable audit record of jurisdictional postings for Engineer {currentUser?.employee_id || 'BMC-ENG-4001'}
-                  </p>
-                </div>
-              </div>
-              <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-teal-50 text-teal-800 border border-teal-200">
-                MCGM HR Registry Linked
-              </span>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-              {wardAssignments.length > 0 ? (
-                wardAssignments.map((asgn) => (
-                  <div
-                    key={asgn.id}
-                    className={`p-3 rounded-xl border flex flex-col justify-between text-xs transition-all ${
-                      asgn.is_current
-                        ? 'bg-teal-50/40 border-teal-200 shadow-sm'
-                        : 'bg-slate-50 border-slate-200 opacity-80'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[#172033]">{asgn.ward_name}</span>
-                          {asgn.is_current && (
-                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                              Active Post
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] text-[#64748B] block mt-0.5">
-                          Ward ID: {asgn.ward_id} • Assigned by MCGM Chief Engineer
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-slate-500 font-mono">
-                        {asgn.start_date} → {asgn.end_date || 'Present'}
-                      </span>
-                    </div>
-                    {asgn.notes && (
-                      <p className="text-[11px] text-slate-600 mt-2 bg-white/70 p-1.5 rounded border border-slate-200/60">
-                        {asgn.notes}
-                      </p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="p-3 bg-teal-50/50 border border-teal-200 rounded-xl text-xs col-span-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-[#172033]">{assignedWardName}</span>
-                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                      Active Post
-                    </span>
-                  </div>
-                  <span className="text-[11px] text-[#64748B] block mt-0.5">
-                    Ward Code: {assignedWardId} • Jurisdiction: Dadar, Mahim, Dharavi
-                  </span>
-                </div>
-              )}
             </div>
           </Card>
         </div>
@@ -539,17 +444,8 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                     <span className="font-mono font-bold text-base text-[#172033]">
                       Case {vc.id} • {vc.location}
                     </span>
-                    <p className="text-xs text-[#64748B] mt-0.5 flex items-center gap-1">
-                      <span className="relative group cursor-help">
-                        Contractor: <span className="font-semibold text-slate-700 border-b border-dashed border-slate-400">{vc.contractor || 'RoadWorks Unit A'}</span>
-                        <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-48 bg-[#172033] text-white text-[10px] p-2 rounded-lg shadow-xl z-50">
-                          <p className="font-bold mb-1 text-xs">Contractor Profile</p>
-                          <p className="text-emerald-400">Rating: 4.8 / 5.0 ★</p>
-                          <p className="text-slate-300">Active Orders: 3</p>
-                          <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-[#172033]"></div>
-                        </div>
-                      </span>
-                      • Landmark: {vc.landmark || 'Street Corner'}
+                    <p className="text-xs text-[#64748B] mt-0.5">
+                      Contractor: {vc.contractor || 'RoadWorks Unit A'} • Landmark: {vc.landmark || 'Street Corner'}
                     </p>
                   </div>
 
@@ -577,22 +473,13 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                         GPS: {vc.coordinates.lat?.toFixed(4)}°N, {vc.coordinates.lng?.toFixed(4)}°E
                       </span>
                     </div>
-                    <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center text-slate-400 border border-[#E2E8F0] cursor-pointer group" onClick={() => vc.beforeImage && setZoomedImage({ src: vc.beforeImage, alt: 'Before Repair' })}>
+                    <div className="aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center text-slate-400 border border-[#E2E8F0]">
                       {vc.beforeImage ? (
-                        <>
-                          <img
-                            src={vc.beforeImage}
-                            alt="Before Repair"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                            <Search size={24} className="text-white drop-shadow-md" />
-                          </div>
-                          {/* AI Bounding Box Overlay (Before) */}
-                          <div className="absolute bottom-4 right-1/4 w-[40%] h-[35%] border-2 border-dashed border-amber-500 bg-amber-500/10 rounded pointer-events-none animate-pulse">
-                            <span className="absolute -top-5 left-0 bg-amber-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">Detected Cavity</span>
-                          </div>
-                        </>
+                        <img
+                          src={vc.beforeImage}
+                          alt="Before Repair"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="text-center p-4">
                           <AlertTriangle size={32} className="mx-auto text-amber-400 mb-1" />
@@ -610,22 +497,13 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                         GPS Match Verified (&lt; 5m)
                       </span>
                     </div>
-                    <div className={`aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center text-slate-400 border cursor-pointer group ${isVerified ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-amber-400'}`} onClick={() => vc.afterImage && setZoomedImage({ src: vc.afterImage, alt: 'After Repair' })}>
+                    <div className={`aspect-video bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center text-slate-400 border ${isVerified ? 'border-emerald-500 ring-2 ring-emerald-500/20' : 'border-amber-400'}`}>
                       {vc.afterImage ? (
-                        <>
-                          <img
-                            src={vc.afterImage}
-                            alt="After Repair"
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
-                            <Search size={24} className="text-white drop-shadow-md" />
-                          </div>
-                          {/* AI Bounding Box Overlay (After) */}
-                          <div className="absolute bottom-4 right-1/4 w-[42%] h-[38%] border-2 border-dashed border-emerald-500 bg-emerald-500/10 rounded pointer-events-none animate-pulse">
-                            <span className="absolute -top-5 left-0 bg-emerald-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow">Restored Surface</span>
-                          </div>
-                        </>
+                        <img
+                          src={vc.afterImage}
+                          alt="After Repair"
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
                         <div className="text-center p-4">
                           <CheckCircle2 size={32} className="mx-auto text-emerald-400 mb-1" />
@@ -715,7 +593,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                       variant="danger"
                       size="sm"
                       disabled={actionLoading}
-                      onClick={() => setRejectingWorkOrderId(woId)}
+                      onClick={() => handleReviewVerification(woId, 'REJECT')}
                     >
                       Reject Repair
                     </Button>
@@ -870,64 +748,6 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 </select>
               </div>
             )}
-          </div>
-        </Modal>
-      )}
-
-      {/* Zoomed Image Modal */}
-      {zoomedImage && (
-        <Modal
-          isOpen={!!zoomedImage}
-          onClose={() => setZoomedImage(null)}
-          title={zoomedImage.alt}
-          description="High-resolution evidence capture"
-        >
-          <div className="rounded-xl overflow-hidden border border-[#E2E8F0] shadow-sm max-h-[70vh] flex justify-center bg-slate-900">
-            <img src={zoomedImage.src} alt={zoomedImage.alt} className="object-contain w-full h-full" />
-          </div>
-        </Modal>
-      )}
-
-      {/* Rejection Notes Modal */}
-      {rejectingWorkOrderId && (
-        <Modal
-          isOpen={!!rejectingWorkOrderId}
-          onClose={() => {
-            setRejectingWorkOrderId(null);
-            setRejectionNotes('');
-          }}
-          title="Reject AI Verification"
-          description={`Work Order ${rejectingWorkOrderId}`}
-          footer={
-            <div className="flex items-center justify-between w-full">
-              <Button variant="secondary" size="sm" onClick={() => {
-                setRejectingWorkOrderId(null);
-                setRejectionNotes('');
-              }}>
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                disabled={actionLoading || !rejectionNotes.trim()}
-                onClick={() => handleReviewVerification(rejectingWorkOrderId, 'REJECT', rejectionNotes)}
-              >
-                Confirm Rejection & Rework
-              </Button>
-            </div>
-          }
-        >
-          <div className="space-y-3">
-            <label className="block text-xs font-semibold text-[#172033]">
-              Rejection / Rework Notes for Contractor
-            </label>
-            <textarea
-              className="w-full h-24 bg-white border border-[#CBD5E1] rounded-lg p-3 text-xs text-[#172033] focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
-              placeholder="E.g. Asphalt patch is not level with the road surface. Debris left on site."
-              value={rejectionNotes}
-              onChange={(e) => setRejectionNotes(e.target.value)}
-            />
-            <p className="text-[10px] text-[#64748B]">These notes will be sent directly to the contractor's field app to guide their rework.</p>
           </div>
         </Modal>
       )}
