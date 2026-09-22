@@ -284,3 +284,19 @@ export async function approveExpenseMemo(memoId: string): Promise<any> {
   return res.json();
 }
 
+export async function getNearestWard(lat: number, lng: number): Promise<{
+  ward_id: string;
+  ward_name: string;
+  ward_code: string;
+  road_id?: string;
+  road_name?: string;
+}> {
+  const res = await fetch(`${API_BASE_URL}/geo/nearest-ward?lat=${lat}&lng=${lng}`);
+  if (!res.ok) {
+    const err = await res.json().catch(() => null);
+    throw new Error(err?.detail || 'Failed to fetch nearest ward');
+  }
+  return res.json();
+}
+
+

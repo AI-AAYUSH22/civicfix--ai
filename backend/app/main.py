@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.database import engine, Base, SessionLocal
-from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal, memos, whatsapp_bot
+from app.api.v1 import auth, cases, work_orders, evidence, verification, municipal, memos, whatsapp_bot, geo
 from app.seed.demo_data import seed_database
 from app.core.multi_db import init_contractor_databases
 
@@ -59,6 +59,7 @@ app.include_router(verification.router, prefix=f"{settings.API_V1_STR}/verificat
 app.include_router(municipal.router, prefix=f"{settings.API_V1_STR}/municipal", tags=["Municipal Dashboard"])
 app.include_router(memos.router, prefix=f"{settings.API_V1_STR}/memos", tags=["Expense Memos"])
 app.include_router(whatsapp_bot.router, prefix=f"{settings.API_V1_STR}/whatsapp", tags=["WhatsApp Bot"])
+app.include_router(geo.router, prefix=f"{settings.API_V1_STR}/geo", tags=["Geo"])
 
 
 @app.get("/")

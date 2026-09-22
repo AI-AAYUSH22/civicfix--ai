@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Camera,
   MapPin,
@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   Sparkles,
+  Building,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -15,6 +16,7 @@ import { Modal } from '@/components/ui/Modal';
 import type { PotholeCase, Severity } from '@/types';
 import { useApp } from '@/context/AppContext';
 import { formatDate } from '@/utils/caseUtils';
+import { getNearestWard } from '@/services/api';
 
 export const CitizenHome: React.FC = () => {
   const { cases, submitComplaint } = useApp();
@@ -36,43 +38,151 @@ export const CitizenHome: React.FC = () => {
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
   const [fetchingGPS, setFetchingGPS] = useState(false);
 
-  const fetchRealLocation = () => {
+  // GPS permission & accuracy state
+  const [locationPermission, setLocationPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const [detectedWard, setDetectedWard] = useState<{
+    ward_id: string;
+    ward_name: string;
+    ward_code: string;
+    road_id?: string;
+    road_name?: string;
+  } | null>(null);
+  const [detectingWard, setDetectingWard] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+
+  // Auto-fetch nearest ward according to GPS location
+  const fetchNearestWard = useCallback(async (latitude: number, longitude: number) => {
+    setDetectingWard(true);
+    try {
+      const wardData = await getNearestWard(latitude, longitude);
+      setDetectedWard(wardData);
+      if (wardData.road_name) {
+        setAddress((prev) => (prev ? prev : wardData.road_name!));
+      }
+    } catch (e) {
+      console.warn('Could not auto-fetch nearest ward:', e);
+    } finally {
+      setDetectingWard(false);
+    }
+  }, []);
+
+  // Request location permission early (called when modal opens)
+  const requestLocationPermission = useCallback(async () => {
+    setGpsError(null);
+    if (!('geolocation' in navigator)) {
+      setLocationPermission('denied');
+      setGpsError('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    // Check permission state if the Permissions API is available
+    try {
+      if (navigator.permissions) {
+        const permStatus = await navigator.permissions.query({ name: 'geolocation' });
+        setLocationPermission(permStatus.state as 'prompt' | 'granted' | 'denied');
+        permStatus.onchange = () => {
+          setLocationPermission(permStatus.state as 'prompt' | 'granted' | 'denied');
+        };
+        if (permStatus.state === 'denied') {
+          setGpsError('Location access denied. Please enable it in your browser settings and retry.');
+          return;
+        }
+      }
+    } catch {
+      // Permissions API not supported, continue with direct geolocation call
+    }
+
+    // Trigger the browser permission dialog & get initial position
     setFetchingGPS(true);
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          setLat(position.coords.latitude);
-          setLng(position.coords.longitude);
-          try {
-            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
-            if (res.ok) {
-              const data = await res.json();
-              if (data.address) {
-                setAddress(data.address.road || data.address.suburb || data.address.city || 'Unknown Road');
-                setLandmark(data.address.neighbourhood || data.address.county || 'Unknown Area');
-              }
-            }
-          } catch (e) {
-            console.error('Reverse geocode failed', e);
-          }
-          setFetchingGPS(false);
-        },
-        (error) => {
-          console.error("GPS Error:", error);
-          setLat(19.0178);
-          setLng(72.8478);
-          setAddress("Gokhale Road, Dadar West");
-          setLandmark("Near Plaza Cinema");
-          setFetchingGPS(false);
-        },
-        { enableHighAccuracy: true, timeout: 5000 }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationPermission('granted');
+        setLat(position.coords.latitude);
+        setLng(position.coords.longitude);
+        setGpsAccuracy(position.coords.accuracy);
+        setFetchingGPS(false);
+        // Reverse geocode & resolve nearest ward for the initial position
+        reverseGeocode(position.coords.latitude, position.coords.longitude);
+        fetchNearestWard(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        console.error('GPS permission/initial fix error:', error);
+        setFetchingGPS(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermission('denied');
+          setGpsError('Location access denied. Please enable it in your browser settings and retry.');
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setGpsError('Unable to determine your location. Please ensure GPS is enabled on your device.');
+        } else if (error.code === error.TIMEOUT) {
+          setGpsError('GPS timed out. Please move to an open area and retry.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+  }, [fetchNearestWard]);
+
+  // Reverse geocode helper
+  const reverseGeocode = async (latitude: number, longitude: number) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
       );
-    } else {
-      setLat(19.0178);
-      setLng(72.8478);
-      setFetchingGPS(false);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.address) {
+          setAddress(data.address.road || data.address.suburb || data.address.city || 'Unknown Road');
+          setLandmark(data.address.neighbourhood || data.address.county || 'Unknown Area');
+        }
+      }
+    } catch (e) {
+      console.error('Reverse geocode failed', e);
     }
   };
+
+  // Start continuous GPS tracking via watchPosition
+  const startGPSWatch = useCallback(() => {
+    if (watchIdRef.current !== null) return; // already watching
+    if (!('geolocation' in navigator)) return;
+
+    setFetchingGPS(true);
+    setGpsError(null);
+
+    const id = navigator.geolocation.watchPosition(
+      (position) => {
+        setLocationPermission('granted');
+        setLat(position.coords.latitude);
+        setLng(position.coords.longitude);
+        setGpsAccuracy(position.coords.accuracy);
+        setFetchingGPS(false);
+        reverseGeocode(position.coords.latitude, position.coords.longitude);
+        fetchNearestWard(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        console.error('GPS watch error:', error);
+        setFetchingGPS(false);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermission('denied');
+          setGpsError('Location access denied. Please enable it in your browser settings and retry.');
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          setGpsError('Unable to determine your location. Please ensure GPS is enabled.');
+        } else if (error.code === error.TIMEOUT) {
+          setGpsError('GPS timed out. Move to an open area and retry.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+    watchIdRef.current = id;
+  }, [fetchNearestWard]);
+
+  // Stop GPS watching
+  const stopGPSWatch = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  }, []);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -91,7 +201,17 @@ export const CitizenHome: React.FC = () => {
     setAiResult(null);
     setSelectedFile(null);
     setPreviewUrl(null);
+    setGpsError(null);
+    setGpsAccuracy(null);
+    setLat(null);
+    setLng(null);
+    setAddress('');
+    setLandmark('');
+    setDetectedWard(null);
+    setDetectingWard(false);
     setReportModalOpen(true);
+    // Request location permission immediately when modal opens
+    requestLocationPermission();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -113,7 +233,7 @@ export const CitizenHome: React.FC = () => {
           setAiResult(data);
           if (data.is_pothole && data.confidence >= 50) {
             setReportStep(3);
-            fetchRealLocation();
+            startGPSWatch();
           }
         }
       } catch (err) {
@@ -134,7 +254,7 @@ export const CitizenHome: React.FC = () => {
       });
     }
     setReportStep(3);
-    fetchRealLocation();
+    startGPSWatch();
   };
 
   const handleSubmitComplaint = async () => {
@@ -147,6 +267,9 @@ export const CitizenHome: React.FC = () => {
       formData.append('severity', severity);
       formData.append('address', address);
       formData.append('landmark', landmark);
+      if (detectedWard?.ward_id) {
+        formData.append('ward_id', detectedWard.ward_id);
+      }
 
       if (selectedFile) {
         formData.append('photo', selectedFile);
@@ -249,7 +372,7 @@ export const CitizenHome: React.FC = () => {
           setAiResult(data);
           if (data.is_pothole && data.confidence >= 50) {
             setReportStep(3);
-            fetchRealLocation();
+            startGPSWatch();
           }
         }
       } catch (err) {
@@ -262,12 +385,18 @@ export const CitizenHome: React.FC = () => {
   
   // Intercept changing step 2 to start camera
   const goToStep2 = () => {
+    if (locationPermission !== 'granted') {
+      setGpsError('Please grant location access before proceeding.');
+      requestLocationPermission();
+      return;
+    }
     setReportStep(2);
     startCamera();
   };
 
   const closeReportModal = () => {
     stopCamera();
+    stopGPSWatch();
     setReportModalOpen(false);
   };
 
@@ -436,8 +565,8 @@ export const CitizenHome: React.FC = () => {
               <Button variant="secondary" size="sm" onClick={closeReportModal}>
                 Cancel
               </Button>
-              <Button variant="primary" size="sm" onClick={goToStep2}>
-                Take Photo
+              <Button variant="primary" size="sm" onClick={goToStep2} disabled={locationPermission !== 'granted'}>
+                {locationPermission !== 'granted' ? 'Waiting for GPS...' : 'Take Photo'}
               </Button>
             </>
           ) : reportStep === 2 ? (
@@ -508,6 +637,61 @@ export const CitizenHome: React.FC = () => {
                   Take a clear photo of the pothole with surrounding road context for instant AI detection.
                 </p>
               </div>
+
+              {/* Location permission status banner */}
+              {locationPermission === 'granted' && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold">
+                    <MapPin size={14} />
+                    Location access granted — GPS ready
+                    {gpsAccuracy !== null && (
+                      <span className="text-emerald-500 font-normal">(±{gpsAccuracy.toFixed(1)}m)</span>
+                    )}
+                  </div>
+                  {detectedWard && (
+                    <div className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-xs font-medium">
+                      <Building size={13} className="text-[#0F766E]" />
+                      <span>Auto-Assigned Ward: <strong className="font-bold text-[#0F766E]">{detectedWard.ward_name} ({detectedWard.ward_code})</strong></span>
+                    </div>
+                  )}
+                </div>
+              )}
+              {locationPermission === 'prompt' && (
+                <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold">
+                  <MapPin size={14} className="animate-pulse" />
+                  {fetchingGPS ? 'Acquiring GPS signal...' : 'Please allow location access when prompted'}
+                </div>
+              )}
+              {locationPermission === 'denied' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                    <MapPin size={14} />
+                    {gpsError || 'Location access denied — please enable it in browser settings'}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestLocationPermission}
+                    className="text-xs font-semibold text-[#0F766E] underline hover:text-teal-800"
+                  >
+                    Retry Location Access
+                  </button>
+                </div>
+              )}
+              {gpsError && locationPermission !== 'denied' && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 text-xs font-semibold">
+                    <MapPin size={14} />
+                    {gpsError}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={requestLocationPermission}
+                    className="text-xs font-semibold text-[#0F766E] underline hover:text-teal-800"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -610,16 +794,41 @@ export const CitizenHome: React.FC = () => {
                 </div>
               )}
 
-              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-1">
-                <p className="font-bold text-[#0F766E] flex items-center gap-1">
-                  <MapPin size={13} />
-                  GPS Geofence Locked
-                </p>
-                <p className="text-[11px] text-teal-800">
-                  {fetchingGPS ? 'Locating your exact coordinates...' : 
-                   `Latitude: ${lat?.toFixed(4) || '19.0178'}° N | Longitude: ${lng?.toFixed(4) || '72.8478'}° E (±2.5m precision)`}
-                </p>
+              <div className="p-3 bg-teal-50 border border-teal-200 rounded-xl space-y-2">
+                <div>
+                  <p className="font-bold text-[#0F766E] flex items-center gap-1">
+                    <MapPin size={13} />
+                    {fetchingGPS ? 'Acquiring GPS Signal...' : 'GPS Geofence Locked'}
+                  </p>
+                  <p className="text-[11px] text-teal-800 mt-0.5">
+                    {fetchingGPS
+                      ? 'Locating your exact coordinates...'
+                      : lat && lng
+                      ? `Latitude: ${lat.toFixed(6)}° N | Longitude: ${lng.toFixed(6)}° E (±${gpsAccuracy ? gpsAccuracy.toFixed(1) : '?'}m precision)`
+                      : 'GPS coordinates unavailable — please grant location access'}
+                  </p>
+                  {gpsError && (
+                    <p className="text-[11px] text-red-600 font-semibold mt-1">{gpsError}</p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-teal-200/70 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Building size={14} className="text-[#0F766E]" />
+                    <span className="text-xs font-semibold text-slate-700">Municipal Ward:</span>
+                  </div>
+                  {detectingWard ? (
+                    <span className="text-xs text-[#0F766E] font-medium animate-pulse">Detecting Ward...</span>
+                  ) : detectedWard ? (
+                    <span className="text-xs font-bold text-[#0F766E] bg-teal-100/90 px-2.5 py-0.5 rounded-md border border-teal-300">
+                      {detectedWard.ward_name} ({detectedWard.ward_code})
+                    </span>
+                  ) : (
+                    <span className="text-xs text-slate-400 italic">Ward auto-mapping...</span>
+                  )}
+                </div>
               </div>
+
               <div>
                 <label className="font-semibold text-[#172033] block mb-1">Road / Street Name:</label>
                 <input
@@ -643,6 +852,15 @@ export const CitizenHome: React.FC = () => {
 
           {reportStep === 4 && (
             <div className="space-y-3 text-xs">
+              {detectedWard && (
+                <div className="p-2.5 bg-teal-50/80 border border-teal-200 rounded-lg flex items-center justify-between text-xs">
+                  <span className="text-slate-600 font-medium">Assigned Ward:</span>
+                  <span className="font-bold text-[#0F766E] flex items-center gap-1">
+                    <Building size={13} />
+                    {detectedWard.ward_name} ({detectedWard.ward_code})
+                  </span>
+                </div>
+              )}
               <div>
                 <label className="font-semibold text-[#172033] block mb-1">Description:</label>
                 <textarea

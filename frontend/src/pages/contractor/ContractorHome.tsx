@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   Camera,
   MapPin,
@@ -25,13 +25,11 @@ interface ContractorHomeProps {
 export const ContractorHome: React.FC<ContractorHomeProps> = ({
   filter = 'all',
 }) => {
-  const { wards, workOrders, submitEvidenceHandler, submitExpenseMemoHandler } = useApp();
+  const { workOrders, submitEvidenceHandler, submitExpenseMemoHandler } = useApp();
 
-
-  
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
-  const [captureType, setCaptureType] = useState<'after'>('after');
+  const [captureType, setCaptureType] = useState<'before' | 'after'>('after');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -43,6 +41,9 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [liveLocation, setLiveLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsAccuracy, setGpsAccuracy] = useState<number | null>(null);
+  const watchIdRef = useRef<number | null>(null);
 
   // Expense Memo State
   const [memoModalOpen, setMemoModalOpen] = useState(false);
@@ -54,8 +55,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
   const [patchAreaSqm, setPatchAreaSqm] = useState('4.2');
   const [submittingMemo, setSubmittingMemo] = useState(false);
   const [memoSyncResult, setMemoSyncResult] = useState<any | null>(null);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -100,12 +99,31 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     return true;
   });
 
-  const handleOpenCapture = (order: WorkOrder, type: 'before' | 'after') => {
+  const handleOpenCapture = async (order: WorkOrder, type: 'before' | 'after') => {
     setSelectedOrder(order);
     setCaptureType(type);
     setSelectedFile(null);
     setPreviewUrl(null);
     setVerificationResult(null);
+    setGpsError(null);
+    setGpsAccuracy(null);
+    setLiveLocation(null);
+
+    // Request location permission before opening camera
+    if ('geolocation' in navigator) {
+      try {
+        if (navigator.permissions) {
+          const permStatus = await navigator.permissions.query({ name: 'geolocation' });
+          if (permStatus.state === 'denied') {
+            setGpsError('Location access denied. Please enable it in your browser settings.');
+            showToast('GPS permission denied. Please enable location access.');
+          }
+        }
+      } catch {
+        // Permissions API not supported, continue
+      }
+    }
+
     setCaptureModalOpen(true);
     startCamera();
   };
@@ -118,21 +136,52 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
         videoRef.current.srcObject = mediaStream;
       }
       
-      // Get live GPS
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => {
-          console.warn('GPS Error', err);
-          // Fallback to mock if permission denied for demo
-          setLiveLocation({ lat: 19.0178, lng: 72.8478 });
-        },
-        { enableHighAccuracy: true }
-      );
+      // Start continuous GPS tracking via watchPosition
+      startGPSWatch();
     } catch (err) {
       console.error('Camera failed', err);
       showToast('Could not access camera. Check permissions.');
     }
   };
+
+  // Start continuous GPS tracking
+  const startGPSWatch = useCallback(() => {
+    if (watchIdRef.current !== null) return;
+    if (!('geolocation' in navigator)) {
+      setGpsError('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    setGpsError(null);
+
+    const id = navigator.geolocation.watchPosition(
+      (pos) => {
+        setLiveLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsAccuracy(pos.coords.accuracy);
+        setGpsError(null);
+      },
+      (err) => {
+        console.warn('GPS Error', err);
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsError('Location access denied. Please enable it in your browser settings.');
+        } else if (err.code === err.POSITION_UNAVAILABLE) {
+          setGpsError('Unable to determine your location. Please ensure GPS is enabled.');
+        } else if (err.code === err.TIMEOUT) {
+          setGpsError('GPS timed out. Move to an open area and retry.');
+        }
+      },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+    );
+    watchIdRef.current = id;
+  }, []);
+
+  // Stop GPS watching
+  const stopGPSWatch = useCallback(() => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+  }, []);
 
   const stopCamera = () => {
     if (stream) {
@@ -143,6 +192,7 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
 
   const handleCloseCapture = () => {
     stopCamera();
+    stopGPSWatch();
     setCaptureModalOpen(false);
   };
 
@@ -219,11 +269,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
     } finally {
       setUploading(false);
     }
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Gallery upload is disabled for contractors. They must use the live camera.
-    alert('Gallery uploads are disabled for contractors. Please use the live camera to capture evidence.');
   };
 
   const handleUploadEvidence = async () => {
@@ -316,7 +361,6 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
           </Card>
         ) : (
           filteredOrders.map((order) => {
-            const hasBefore = order.beforePhotoCaptured;
             const hasAfter = order.afterPhotoCaptured;
 
             return (
@@ -454,11 +498,14 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                     {selectedOrder.id} • {captureType.toUpperCase()}
                   </p>
                   <p>
-                    GPS: {selectedOrder.coordinates?.lat.toFixed(4)}°N, {selectedOrder.coordinates?.lng.toFixed(4)}°E (±1.2m)
+                    GPS: {(liveLocation?.lat || selectedOrder.coordinates?.lat || 0).toFixed(6)}°N, {(liveLocation?.lng || selectedOrder.coordinates?.lng || 0).toFixed(6)}°E {gpsAccuracy ? `(±${gpsAccuracy.toFixed(1)}m)` : ''}
                   </p>
+                  {gpsError && (
+                    <p className="text-red-400 font-semibold">{gpsError}</p>
+                  )}
                 </div>
                 <div className="text-right">
-                  <p className="font-semibold text-white">RoadWorks Unit A</p>
+                  <p className="font-semibold text-white">{selectedOrder.ward || 'Municipal Ward'}</p>
                   <p className="text-slate-400">Live Cryptographic Stamp</p>
                 </div>
               </div>
