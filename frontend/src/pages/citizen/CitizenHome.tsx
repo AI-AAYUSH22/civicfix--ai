@@ -445,8 +445,6 @@ export const CitizenHome: React.FC<CitizenHomeProps> = ({
     startCamera();
   };
 
-  const closeReportModal = handleCloseReport;
-
   return (
     <div className="space-y-5 relative">
       {/* Primary Action Card: Report a Pothole */}

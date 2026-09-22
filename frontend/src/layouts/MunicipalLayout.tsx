@@ -7,7 +7,6 @@ import {
   Users,
   Search,
   Bell,
-  Building2,
   Menu,
   X,
 } from 'lucide-react';
