@@ -4,6 +4,7 @@ import numpy as np
 def analyze_pothole_image(image_bytes: bytes) -> dict:
     """
     Analyzes an image to detect potholes using OpenCV.
+    Uses edge density, structural variance, and contour detection.
     Returns a dictionary with is_pothole (bool), confidence (float), and estimated_size_sqm (float).
     """
     try:
@@ -14,117 +15,106 @@ def analyze_pothole_image(image_bytes: bytes) -> dict:
         if img is None:
             raise ValueError("Invalid image format")
 
+        # --- NEW: Indoor/Selfie Detection via Color Variance ---
+        # A road is usually uniform in hue/saturation. A selfie or room has many different colors.
+        hsv_for_variance = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        # Calculate standard deviation of Hue and Saturation
+        _, stddev = cv2.meanStdDev(hsv_for_variance)
+        hue_stddev = stddev[0][0]
+        sat_stddev = stddev[1][0]
+        
+        # If the image has high color variance, it's likely a complex scene (like a person/room), not a road surface
+        if hue_stddev > 30 or sat_stddev > 40:
+            return {
+                "is_pothole": False,
+                "confidence": 95.0,
+                "estimated_size_sqm": 0.0,
+                "message": "Invalid: Complex scene detected (possible selfie or indoor photo). Please capture the road."
+            }
+
         height, width = img.shape[:2]
         total_pixels = height * width
 
-        # Global Check: A road image should be mostly grey/asphalt
+        # Global Check: A road image should not be overly saturated/colorful
         hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
         global_mean_val = cv2.mean(hsv_img)
         global_saturation = global_mean_val[1]
         
-        # If the overall image is very colorful, it's not a road
-        if global_saturation > 40:
+        # If the overall image is very colorful (like a room, grass, sky), it's not a road
+        if global_saturation > 60:
             return {
                 "is_pothole": False,
                 "confidence": 10.0,
                 "estimated_size_sqm": 0.0,
-                "message": "Invalid: Background does not match asphalt road profile."
+                "message": "Invalid: Background is too colorful to be an asphalt/dirt road."
             }
 
         # Convert to grayscale
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Apply Gaussian blur to reduce noise
-        blurred = cv2.GaussianBlur(gray, (11, 11), 0)
+        # 1. Edge Density - Potholes and damaged roads have high texture variance
+        edges = cv2.Canny(gray, 50, 150)
+        edge_density = np.sum(edges > 0) / edges.size
 
-        # Apply adaptive thresholding to find dark regions (potential potholes)
+        # 2. Contour Detection for cavities/anomalies
+        blurred = cv2.GaussianBlur(gray, (15, 15), 0)
+        # We use a very localized adaptive threshold to find depressions/cracks
         thresh = cv2.adaptiveThreshold(
-            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 15, 5
+            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 21, 5
         )
 
-        # Find contours
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        best_contour = None
         max_score = 0
         best_area = 0
 
         for cnt in contours:
             area = cv2.contourArea(cnt)
             # Filter out tiny specks and massive background contours
-            if area < (total_pixels * 0.01) or area > (total_pixels * 0.4):
+            if area < (total_pixels * 0.005) or area > (total_pixels * 0.5):
                 continue
 
-            # Calculate circularity/roughness score
+            # Calculate a generic roughness score (perimeter relative to area)
             perimeter = cv2.arcLength(cnt, True)
             if perimeter == 0:
                 continue
+                
+            roughness = (perimeter * perimeter) / area
             
-            circularity = 4 * np.pi * (area / (perimeter * perimeter))
-            
-            if circularity < 0.5:
-                continue
+            # Potholes and road damage are usually rough/jagged (high roughness)
+            if roughness < 5: 
+                continue # Too perfectly smooth
 
-            # STRICT COLOR CHECK (Must be dark and low saturation - typical asphalt colors)
-            # Create a mask for this contour to calculate mean color
-            mask = np.zeros(gray.shape, dtype=np.uint8)
-            cv2.drawContours(mask, [cnt], -1, 255, -1)
-            
-            # Convert original image to HSV to check saturation
-            hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-            mean_val = cv2.mean(hsv_img, mask=mask)
-            # mean_val is (H, S, V, _)
-            mean_hue = mean_val[0]
-            mean_saturation = mean_val[1]
-            mean_brightness = mean_val[2]
-            
-            # If it's highly saturated (colorful) or very bright, it's not a pothole
-            # A pothole is dark grey/black asphalt. Saturation should be very low.
-            if mean_saturation > 40 or mean_brightness > 120:
-                continue
-            
-            # Additional check: Asphalt shouldn't have strong warm colors (red/orange/yellow/brown)
-            # Dinosaur is brownish.
-            if mean_saturation > 20 and (mean_hue < 30 or mean_hue > 150):
-                continue
-            
-            # Score combining area relative to image and circularity.
-            score = (area / total_pixels) * 100 + (circularity * 50)
+            score = (area / total_pixels) * 100
             
             if score > max_score:
                 max_score = score
-                best_contour = cnt
                 best_area = area
 
-        if best_contour is not None:
-            # We found a candidate pothole
-            # Base confidence starts high because we found a significant structural anomaly
-            confidence = min(99.0, 85.0 + (max_score * 0.5))
+        # Decision Logic:
+        # A pothole image either has a significant detected cavity contour OR very high edge density (completely shattered road)
+        if max_score > 0.5 or edge_density > 0.05:
+            # Calculate confidence based on how much structural damage was found
+            confidence = min(99.0, 75.0 + (max_score * 2) + (edge_density * 200))
             
-            # Estimate size: scale the pixel area to a realistic range
-            area_ratio = best_area / total_pixels
-            estimated_size_sqm = round(area_ratio * 3.5, 2)
-            
-            # Ensure it's at least 0.1
-            estimated_size_sqm = max(0.1, estimated_size_sqm)
+            # Estimate size
+            area_ratio = best_area / total_pixels if best_area > 0 else (edge_density * 0.5)
+            estimated_size_sqm = round(max(0.1, area_ratio * 4.0), 2)
             
             return {
                 "is_pothole": True,
                 "confidence": round(confidence, 1),
                 "estimated_size_sqm": estimated_size_sqm,
-                "message": "High-confidence structural anomaly detected matching asphalt deterioration."
+                "message": "Structural anomaly detected matching asphalt deterioration."
             }
         else:
-            # If no valid contour found, fail strictly. We removed the high-variance fallback 
-            # so colourful/jagged things (like dinosaurs) don't get through by accident.
             return {
                 "is_pothole": False,
                 "confidence": 15.0,
                 "estimated_size_sqm": 0.0,
-                "message": "Low confidence: Target lacks characteristic circularity or asphalt color profile."
+                "message": "Low confidence: Surface appears too smooth or lacks defined cavities."
             }
     except Exception as e:
-        # Strict failure on exception
         return {
             "is_pothole": False,
             "confidence": 10.0,

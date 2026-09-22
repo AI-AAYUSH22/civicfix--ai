@@ -25,11 +25,13 @@ interface ContractorHomeProps {
 export const ContractorHome: React.FC<ContractorHomeProps> = ({
   filter = 'all',
 }) => {
-  const { workOrders, submitEvidenceHandler, submitExpenseMemoHandler } = useApp();
+  const { wards, workOrders, submitEvidenceHandler, submitExpenseMemoHandler } = useApp();
 
+
+  
   const [selectedOrder, setSelectedOrder] = useState<WorkOrder | null>(null);
   const [captureModalOpen, setCaptureModalOpen] = useState(false);
-  const [captureType, setCaptureType] = useState<'before' | 'after'>('before');
+  const [captureType, setCaptureType] = useState<'after'>('after');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -345,26 +347,15 @@ export const ContractorHome: React.FC<ContractorHomeProps> = ({
                 </div>
 
                 {/* Evidence & Billing Actions Strip */}
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <Button
-                    variant={hasBefore ? 'outline' : 'primary'}
-                    size="sm"
-                    fullWidth
-                    leftIcon={hasBefore ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Camera size={13} />}
-                    onClick={() => handleOpenCapture(order, 'before')}
-                  >
-                    {hasBefore ? 'BEFORE Captured ✓' : '1. Capture BEFORE'}
-                  </Button>
-
+                <div className="pt-1">
                   <Button
                     variant={hasAfter ? 'outline' : 'primary'}
                     size="sm"
                     fullWidth
-                    disabled={!hasBefore}
                     leftIcon={hasAfter ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Camera size={13} />}
                     onClick={() => handleOpenCapture(order, 'after')}
                   >
-                    {hasAfter ? 'AFTER Captured ✓' : '2. Capture AFTER'}
+                    {hasAfter ? 'AFTER Captured ✓' : 'Capture AFTER Photo'}
                   </Button>
                 </div>
 

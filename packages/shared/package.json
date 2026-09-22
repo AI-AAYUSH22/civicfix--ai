@@ -1,8 +1,0 @@
-{
-  "name": "@civicfix/shared",
-  "version": "1.0.0",
-  "description": "Shared TypeScript types and API client for all CivicFix apps",
-  "main": "index.ts",
-  "types": "index.ts",
-  "private": true
-}

@@ -23,10 +23,10 @@ export const CitizenHome: React.FC = () => {
   const [reportStep, setReportStep] = useState<number>(1);
   const [severity, setSeverity] = useState<Severity>('High');
   const [description, setDescription] = useState('Deep cavity causing dangerous road swerving and two-wheeler risk.');
-  const [address, setAddress] = useState('Gokhale Road, Dadar West');
-  const [landmark, setLandmark] = useState('Near Plaza Cinema');
-  const [lat] = useState<number>(19.0178);
-  const [lng] = useState<number>(72.8478);
+  const [address, setAddress] = useState('');
+  const [landmark, setLandmark] = useState('');
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [createdCase, setCreatedCase] = useState<any | null>(null);
@@ -34,6 +34,45 @@ export const CitizenHome: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
   const [aiResult, setAiResult] = useState<{ is_pothole: boolean; confidence: number; estimated_size_sqm: number; message: string } | null>(null);
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [fetchingGPS, setFetchingGPS] = useState(false);
+
+  const fetchRealLocation = () => {
+    setFetchingGPS(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          setLat(position.coords.latitude);
+          setLng(position.coords.longitude);
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.address) {
+                setAddress(data.address.road || data.address.suburb || data.address.city || 'Unknown Road');
+                setLandmark(data.address.neighbourhood || data.address.county || 'Unknown Area');
+              }
+            }
+          } catch (e) {
+            console.error('Reverse geocode failed', e);
+          }
+          setFetchingGPS(false);
+        },
+        (error) => {
+          console.error("GPS Error:", error);
+          setLat(19.0178);
+          setLng(72.8478);
+          setAddress("Gokhale Road, Dadar West");
+          setLandmark("Near Plaza Cinema");
+          setFetchingGPS(false);
+        },
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    } else {
+      setLat(19.0178);
+      setLng(72.8478);
+      setFetchingGPS(false);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -74,6 +113,7 @@ export const CitizenHome: React.FC = () => {
           setAiResult(data);
           if (data.is_pothole && data.confidence >= 50) {
             setReportStep(3);
+            fetchRealLocation();
           }
         }
       } catch (err) {
@@ -86,7 +126,6 @@ export const CitizenHome: React.FC = () => {
 
   const handleUseSnapshot = () => {
     if (!selectedFile) {
-      // Simulate successful AI check for the canvas placeholder if no real file was uploaded
       setAiResult({
         is_pothole: true,
         confidence: 96.5,
@@ -95,6 +134,7 @@ export const CitizenHome: React.FC = () => {
       });
     }
     setReportStep(3);
+    fetchRealLocation();
   };
 
   const handleSubmitComplaint = async () => {
@@ -102,8 +142,8 @@ export const CitizenHome: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('description', description);
-      formData.append('latitude', lat.toString());
-      formData.append('longitude', lng.toString());
+      formData.append('latitude', (lat || 19.0178).toString());
+      formData.append('longitude', (lng || 72.8478).toString());
       formData.append('severity', severity);
       formData.append('address', address);
       formData.append('landmark', landmark);
@@ -181,11 +221,11 @@ export const CitizenHome: React.FC = () => {
     
     ctx.font = '18px monospace';
     ctx.fillStyle = '#14B8A6';
-    ctx.fillText(`GPS: ${lat.toFixed(6)}°N, ${lng.toFixed(6)}°E`, 20, canvas.height - 35);
+    ctx.fillText(`GPS: ${lat ? lat.toFixed(6) : 'Fetching...'}°N, ${lng ? lng.toFixed(6) : 'Fetching...'}°E`, 20, canvas.height - 35);
     
     ctx.fillStyle = '#94A3B8';
     const timestamp = new Date().toLocaleString();
-    ctx.fillText(`${timestamp} • ${landmark}, ${address}`, 20, canvas.height - 10);
+    ctx.fillText(`${timestamp} • ${landmark || 'Pending'}, ${address || 'Pending'}`, 20, canvas.height - 10);
     
     canvas.toBlob(async (blob) => {
       if (!blob) return;
@@ -209,6 +249,7 @@ export const CitizenHome: React.FC = () => {
           setAiResult(data);
           if (data.is_pothole && data.confidence >= 50) {
             setReportStep(3);
+            fetchRealLocation();
           }
         }
       } catch (err) {
@@ -512,10 +553,11 @@ export const CitizenHome: React.FC = () => {
                 </div>
               )}
               {aiResult && (!aiResult.is_pothole || aiResult.confidence < 50) && (
-                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-8 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce">
-                  <p className="font-black text-3xl tracking-widest uppercase flex items-center gap-3">
-                    <span>⚠️</span> ERROR: NO POTHOLE
+                <div className="fixed top-12 left-1/2 -translate-x-1/2 z-[100] bg-red-600 text-white px-8 py-4 rounded-2xl shadow-[0_0_50px_rgba(220,38,38,0.8)] border-4 border-red-800 animate-bounce text-center">
+                  <p className="font-black text-3xl tracking-widest uppercase flex items-center justify-center gap-3">
+                    <span>⚠️</span> REJECTED
                   </p>
+                  <p className="text-sm font-bold mt-2 text-red-100 uppercase">{aiResult.message || "ERROR: NO POTHOLE DETECTED"}</p>
                 </div>
               )}
 
@@ -574,7 +616,8 @@ export const CitizenHome: React.FC = () => {
                   GPS Geofence Locked
                 </p>
                 <p className="text-[11px] text-teal-800">
-                  Latitude: {lat.toFixed(4)}° N | Longitude: {lng.toFixed(4)}° E (±2.5m precision)
+                  {fetchingGPS ? 'Locating your exact coordinates...' : 
+                   `Latitude: ${lat?.toFixed(4) || '19.0178'}° N | Longitude: ${lng?.toFixed(4) || '72.8478'}° E (±2.5m precision)`}
                 </p>
               </div>
               <div>
