@@ -16,3 +16,4 @@ bcrypt>=4.1
 PyJWT>=2.10
 python-multipart
 email-validator
+praw>=7.7.1

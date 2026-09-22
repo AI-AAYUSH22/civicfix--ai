@@ -57,6 +57,21 @@ class Settings:
     HOMOGRAPHY_INLIER_MIN: int = int(os.getenv("HOMOGRAPHY_INLIER_MIN", "10"))
     POTHOLE_REPAIRED_THRESHOLD: float = float(os.getenv("POTHOLE_REPAIRED_THRESHOLD", "0.65"))
 
+    # Reddit Integration
+    REDDIT_CLIENT_ID: str = os.getenv("REDDIT_CLIENT_ID", "")
+    REDDIT_CLIENT_SECRET: str = os.getenv("REDDIT_CLIENT_SECRET", "")
+    REDDIT_USERNAME: str = os.getenv("REDDIT_USERNAME", "")
+    REDDIT_PASSWORD: str = os.getenv("REDDIT_PASSWORD", "")
+    REDDIT_USER_AGENT: str = os.getenv("REDDIT_USER_AGENT", "CivicFixAI/1.0 (by /u/civicfix_bot)")
+    REDDIT_SUBREDDITS: str = os.getenv("REDDIT_SUBREDDITS", "mumbai,bangalore,delhi,indianroads")
+
+    # WhatsApp Integration
+    WHATSAPP_ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "")
+    WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    WHATSAPP_BUSINESS_ACCOUNT_ID: str = os.getenv("WHATSAPP_BUSINESS_ACCOUNT_ID", "")
+    WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "civicfix_token_2026")
+
 
 settings = Settings()
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)

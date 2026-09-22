@@ -49,3 +49,39 @@ async def save_upload_file(upload_file: UploadFile, subfolder: str = "evidence")
     # Relative path for portable storage
     rel_path = f"uploads/{subfolder}/{unique_filename}"
     return rel_path, upload_file.filename, file_hash
+
+def save_raw_bytes(content: bytes, orig_filename: str = "media.jpg", subfolder: str = "social_ingest") -> Tuple[str, str, str]:
+    """
+    Validates image bytes, computes SHA-256 hash, and saves to the designated upload subfolder.
+    Returns: (relative_storage_path, original_filename, sha256_hash)
+    """
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(status_code=400, detail="File exceeds maximum allowed size of 15MB.")
+
+    # Determine extension
+    ext = os.path.splitext(orig_filename)[1].lower()
+    if not ext or ext not in ALLOWED_EXTENSIONS:
+        ext = ".jpg"
+
+    # Compute SHA-256
+    file_hash = hashlib.sha256(content).hexdigest()
+
+    # Verify image integrity via PIL
+    try:
+        from io import BytesIO
+        img = Image.open(BytesIO(content))
+        img.verify()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid or corrupted image payload: {str(e)}")
+
+    target_dir = os.path.join(settings.UPLOAD_DIR, subfolder)
+    os.makedirs(target_dir, exist_ok=True)
+
+    unique_filename = f"{uuid.uuid4().hex[:12]}_{file_hash[:8]}{ext}"
+    full_path = os.path.join(target_dir, unique_filename)
+
+    with open(full_path, "wb") as f:
+        f.write(content)
+
+    rel_path = f"uploads/{subfolder}/{unique_filename}"
+    return rel_path, orig_filename, file_hash

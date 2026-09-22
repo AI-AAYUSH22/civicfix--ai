@@ -5,6 +5,7 @@ from app.models.work_order import WorkOrder
 from app.models.evidence import EvidenceFile
 from app.models.verification import VerificationResult, VerificationCheck
 from app.models.audit import AuditLog, Notification
+from app.models.conversation_state import ConversationState
 
 __all__ = [
     "User",
@@ -20,4 +21,5 @@ __all__ = [
     "VerificationCheck",
     "AuditLog",
     "Notification",
+    "ConversationState",
 ]

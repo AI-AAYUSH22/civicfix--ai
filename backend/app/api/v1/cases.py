@@ -25,6 +25,12 @@ def serialize_case(case: Case) -> dict:
         "description": case.description,
         "severity": case.severity,
         "status": case.status,
+        "channel": getattr(case, "channel", "PORTAL"),
+        "source_id": getattr(case, "source_id", None),
+        "source_username": getattr(case, "source_username", None),
+        "source_url": getattr(case, "source_url", None),
+        "location_status": getattr(case, "location_status", "RESOLVED"),
+        "location_confidence": getattr(case, "location_confidence", 1.0),
         "ward_id": case.ward_id,
         "ward_name": case.ward.name if case.ward else None,
         "road_id": case.road_id,
@@ -48,6 +54,7 @@ def serialize_case(case: Case) -> dict:
         "created_at": case.created_at,
         "updated_at": case.updated_at,
     }
+
 
 @router.post("", response_model=dict)
 async def create_case(
