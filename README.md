@@ -16,12 +16,10 @@
 
 <br />
 
-```
-   =========================================================================================
-   [ HERO BANNER PLACEHOLDER: Modern split-view mockup showing WhatsApp citizen report     ]
-   [ on the left, Municipal GIS Dashboard in center, and AI Verification result on right    ]
-   =========================================================================================
-```
+<p align="center">
+  <img src="docs/images/dashboard_overview.png" alt="CivicFix AI Municipal GIS Dashboard & Ward Operations Overview" width="100%" style="border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.12);" />
+</p>
+
 
 <br />
 
@@ -430,29 +428,7 @@ cd backend
 python -m pytest -v
 ```
 
-### Current Test Suite Status: **36 / 36 Passing (100%)**
 
-```
-tests/test_api.py::test_health_endpoint PASSED                           [  2%]
-tests/test_api.py::test_municipal_stats PASSED                           [  5%]
-tests/test_api.py::test_list_wards PASSED                                [  8%]
-tests/test_api.py::test_end_to_end_complaint_and_validation PASSED       [ 11%]
-tests/test_auth.py::test_login_ok PASSED                                 [ 13%]
-tests/test_auth.py::test_role_guard[citizen-403] PASSED                  [ 38%]
-tests/test_auth.py::test_role_guard[engineer-200] PASSED                 [ 44%]
-tests/test_social_intake.py::test_extract_google_maps_coordinates PASSED [ 55%]
-tests/test_social_intake.py::test_location_resolver_deterministic_waterfall PASSED [ 58%]
-tests/test_social_intake.py::test_social_intake_submission_with_gps PASSED [ 61%]
-tests/test_social_intake.py::test_social_intake_deduplication PASSED     [ 63%]
-tests/test_social_intake.py::test_multi_turn_whatsapp_conversation_flow PASSED [ 66%]
-tests/test_social_intake.py::test_notification_idempotency PASSED        [ 69%]
-tests/test_social_intake.py::test_social_api_endpoints PASSED            [ 72%]
-tests/test_verification_engine.py::test_gps_verification_pass PASSED     [ 80%]
-tests/test_verification_engine.py::test_full_pipeline_with_synthetic_images PASSED [ 91%]
-tests/test_verification_engine.py::test_dual_database_replication PASSED [100%]
-
-============================== 36 passed in 5.63s ==============================
-```
 
 ---
 
