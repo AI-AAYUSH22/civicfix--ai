@@ -222,15 +222,7 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
 
           {/* Right Header Tools */}
           <div className="flex items-center gap-3">
-            {/* Ward Selector */}
-            <div
-              onClick={() => onWardChange && onWardChange('Ward 12 — Dadar West')}
-              className="hidden lg:flex items-center gap-2 bg-[#F1F5F9] px-3 py-1.5 rounded-xl border border-[#E2E8F0] text-xs font-medium text-[#172033] cursor-pointer hover:bg-slate-200/70"
-            >
-              <span className="text-[#64748B]">Ward:</span>
-              <span className="font-semibold">{selectedWard}</span>
-              <ChevronDown size={14} className="text-[#64748B]" />
-            </div>
+
 
             {/* Notifications */}
             <button
