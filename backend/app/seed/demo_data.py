@@ -127,9 +127,10 @@ def seed_database(db: Session):
     # 2. Contractors
     contractors = [
         Contractor(name="RoadWorks Unit A", company_name="RoadWorks Infrastructure Pvt Ltd", phone="+91 98201 67890", email="contractor@roadworks.in", rating=4.8, active_orders=3),
-        Contractor(name="Apex Civil Works", company_name="Apex Infrastructure Solutions", phone="+91 98204 11223", email="contact@apexcivil.com", rating=4.6, active_orders=2),
-        Contractor(name="Mumbai Urban Infra", company_name="MUI Projects Ltd", phone="+91 98205 44556", email="info@mui-projects.in", rating=4.9, active_orders=4),
+        Contractor(name="Apex Civil Works", company_name="Apex Infrastructure Solutions", phone="+91 98204 11223", email="contact@apexcivil.com", rating=4.8, active_orders=3),
+        Contractor(name="Mumbai Urban Infra", company_name="MUI Projects Ltd", phone="+91 98205 44556", email="info@mui-projects.in", rating=4.2, active_orders=5),
         Contractor(name="Thane Paving Ltd", company_name="Thane City Paving Contractors", phone="+91 98206 77889", email="help@thanepaving.com", rating=4.4, active_orders=1),
+        Contractor(name="Navi Mumbai Infra", company_name="NMMC Works Group", phone="+91 98207 88990", email="ops@navimumbaiinfra.in", rating=4.6, active_orders=2),
     ]
     db.add_all(contractors)
     db.flush()
@@ -139,9 +140,11 @@ def seed_database(db: Session):
         {"name": "Ward 12 — Dadar West", "code": "G/N-12", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
         {"name": "Ward 07 — Bandra West", "code": "H/W-07", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
         {"name": "Ward 18 — Andheri East", "code": "K/E-18", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
-        {"name": "Ward 05 — Kurla West", "code": "L-05", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
-        {"name": "Ward 03 — Naupada", "code": "TMC-03", "city": "Thane", "lat": 19.1904, "lng": 72.9723},
-        {"name": "Ward 08 — Ghodbunder Road", "code": "TMC-08", "city": "Thane", "lat": 19.2482, "lng": 72.9558},
+        {"name": "Ward 05 - Kurla West", "code": "L-05", "city": "Mumbai", "lat": 19.0645, "lng": 72.8806},
+        {"name": "Ward 03 - Naupada", "code": "TMC-03", "city": "Thane", "lat": 19.1904, "lng": 72.9723},
+        {"name": "Ward 08 - Ghodbunder Road", "code": "TMC-08", "city": "Thane", "lat": 19.2482, "lng": 72.9558},
+        {"name": "Vashi (Ward 11)", "code": "v11", "city": "Navi Mumbai", "lat": 19.0700, "lng": 72.9980},
+        {"name": "Nerul (Ward 04)", "code": "n04", "city": "Navi Mumbai", "lat": 19.0330, "lng": 73.0180},
     ]
 
     wards = []
@@ -162,6 +165,8 @@ def seed_database(db: Session):
         (wards[3], "LBS Marg"),
         (wards[4], "Gokhale Road Thane"),
         (wards[5], "Ghodbunder Highway"),
+        (wards[6], "Palm Beach Road"),
+        (wards[7], "Nerul Station Road"),
     ]
     roads = []
     for ward, road_name in roads_data:

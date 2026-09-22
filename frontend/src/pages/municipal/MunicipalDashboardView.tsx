@@ -40,7 +40,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
   } = useApp();
 
   const [selectedWardId, setSelectedWardId] = useState<string | 'all'>('all');
-  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane'>('Mumbai');
+  const [mapCity, setMapCity] = useState<'Mumbai' | 'Thane' | 'Navi Mumbai'>('Mumbai');
   const [selectedCase, setSelectedCase] = useState<PotholeCase | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -253,14 +253,14 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 Ward GIS Map & Heatmap
               </h3>
               <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-[#E2E8F0] shadow-subtle">
-                {(['Mumbai', 'Thane'] as const).map((c) => (
+                {(['Mumbai', 'Thane', 'Navi Mumbai'] as const).map((c) => (
                   <button
                     key={c}
                     onClick={() => setMapCity(c)}
-                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors ${
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
                       mapCity === c
-                        ? 'bg-[#172033] text-white shadow-sm'
-                        : 'text-[#64748B] hover:text-[#172033]'
+                        ? 'bg-teal-50 text-teal-700 shadow-sm border border-teal-200'
+                        : 'text-slate-500 hover:bg-slate-100 border border-transparent'
                     }`}
                   >
                     {c}

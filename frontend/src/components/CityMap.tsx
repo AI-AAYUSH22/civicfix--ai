@@ -47,7 +47,7 @@ function MapBounds({ cases }: { cases: PotholeCase[] }) {
 
 interface CityMapProps {
   cases: PotholeCase[];
-  city: 'Mumbai' | 'Thane';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
 }
 
 export default function CityMap({ cases, city }: CityMapProps) {

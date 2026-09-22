@@ -6,6 +6,8 @@ export const wards: Ward[] = [
   { id: 'w15', name: 'Ward 15', city: 'Mumbai', pendingCount: 9 },
   { id: 'w21', name: 'Ward 21', city: 'Thane', pendingCount: 6 },
   { id: 'w24', name: 'Ward 24', city: 'Thane', pendingCount: 4 },
+  { id: 'v11', name: 'Vashi (Ward 11)', city: 'Navi Mumbai', pendingCount: 2 },
+  { id: 'n04', name: 'Nerul (Ward 04)', city: 'Navi Mumbai', pendingCount: 1 },
 ];
 
 export const cases: PotholeCase[] = [
@@ -139,6 +141,21 @@ export const cases: PotholeCase[] = [
     contractor: 'Thane Municipal Works',
     beforeImage: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=400&q=80'
   },
+  {
+    id: 'CF-1025',
+    wardId: 'v11',
+    location: 'Palm Beach Road',
+    city: 'Navi Mumbai',
+    coordinates: { x: 45, y: 55, lat: 19.0700, lng: 72.9980 },
+    severity: 'Medium',
+    status: 'AI Verification',
+    description: 'Pothole on Palm Beach Road causing traffic slowdowns near the junction.',
+    reportedDate: '2026-09-15',
+    assignedDate: '2026-09-16',
+    deadline: '2026-09-30',
+    contractor: 'Navi Mumbai Infra',
+    beforeImage: 'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&w=400&q=80'
+  }
 ];
 
 export function getCasesByWard(wardId: string | 'all'): PotholeCase[] {
