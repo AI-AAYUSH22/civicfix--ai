@@ -10,6 +10,7 @@ import {
   Receipt,
   Database,
   Banknote,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -482,7 +483,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                       }`}
                     >
                       {isVerified ? <CheckCircle2 size={14} className="text-emerald-600" /> : <AlertTriangle size={14} className="text-amber-600" />}
-                      AI Confidence: {vr?.score || (isVerified ? 94 : 68)}%
+                      AI Confidence: {vr?.score ? `${vr.score}%` : 'N/A'}
                     </span>
                     <StatusPill status={vc.status} size="sm" />
                   </div>
@@ -558,33 +559,26 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 </div>
 
                 {/* Automated Check Matrix with CV Engine Metrics */}
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2">
-                  {(vr?.checks && vr.checks.length > 0
-                    ? vr.checks
-                    : [
-                        { label: 'GPS Geofence', passed: true, detail: 'Within 3.8m radius' },
-                        { label: 'SIFT Perspective', passed: true, detail: 'RANSAC inliers: 38 (warp OK)' },
-                        { label: 'CLAHE SSIM', passed: true, detail: 'Background SSIM: 89.4% (>85%)' },
-                        { label: 'Canny Cavity', passed: isVerified, detail: isVerified ? 'Cavity drop: 84% reduction' : 'Borderline cavity reduction' },
-                        { label: 'Integrity', passed: true, detail: 'Dual DB & SHA-256 valid' },
-                      ]
-                  ).map((ch, idx) => (
-                    <div
-                      key={idx}
-                      className={`p-2.5 rounded-xl border text-xs ${
-                        ch.passed ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
-                      }`}
-                    >
-                      <span className="font-bold block flex items-center gap-1">
-                        {ch.passed ? <CheckCircle2 size={12} className="text-emerald-600" /> : <AlertTriangle size={12} className="text-amber-600" />}
-                        {ch.label}
-                      </span>
-                      <span className="text-[10px] opacity-80 mt-0.5 block leading-tight font-mono">
-                        {ch.detail}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                {vr?.checks && vr.checks.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-2">
+                    {vr.checks.map((ch, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-2.5 rounded-xl border text-xs ${
+                          ch.passed ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-amber-50 border-amber-200 text-amber-900'
+                        }`}
+                      >
+                        <span className="font-bold block flex items-center gap-1">
+                          {ch.passed ? <CheckCircle2 size={12} className="text-emerald-600" /> : <AlertTriangle size={12} className="text-amber-600" />}
+                          {ch.label}
+                        </span>
+                        <span className="text-[10px] opacity-80 mt-0.5 block leading-tight font-mono">
+                          {ch.detail}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Contractor Expense Memo & Treasury Audit Strip */}
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
@@ -628,7 +622,7 @@ export const MunicipalDashboardView: React.FC<MunicipalDashboardViewProps> = ({
                 {/* Actions */}
                 <div className="flex items-center justify-between gap-3 pt-3 border-t border-[#E2E8F0]">
                   <span className="text-xs text-[#64748B] italic">
-                    {vr?.summary || 'SIFT RANSAC alignment & CLAHE background verification passed.'}
+                    {vr?.summary || 'Pending full AI verification analysis.'}
                   </span>
                   <div className="flex items-center gap-2">
                     <Button
