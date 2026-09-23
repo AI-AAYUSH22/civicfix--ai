@@ -2,11 +2,13 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 
+from typing import Optional
 from app.core.database import get_db
 from app.core.security import TokenError, decode_access_token
 from app.models.user import User, UserRole
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+oauth2_optional_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 _PK_TYPE = User.__table__.c.id.type.python_type  # int / str / UUID, whatever your PK is
 
@@ -36,6 +38,22 @@ def get_current_user(
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Inactive user")
     return user  # role comes from DB, not from the token claim
+
+
+def get_optional_current_user(
+    token: Optional[str] = Depends(oauth2_optional_scheme), db: Session = Depends(get_db)
+) -> Optional[User]:
+    if not token:
+        return None
+    try:
+        payload = decode_access_token(token)
+        pk = _PK_TYPE(payload["sub"])
+        user = db.get(User, pk)
+        if user and user.is_active:
+            return user
+        return None
+    except Exception:
+        return None
 
 
 def require_roles(*allowed: UserRole):

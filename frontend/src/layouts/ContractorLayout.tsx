@@ -1,14 +1,17 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HardHat, Camera, Wifi, Navigation } from 'lucide-react';
+import { HardHat, Camera, Wifi, Navigation, Database, Layers } from 'lucide-react';
 import { pageVariants } from '@/animations';
 import { Button } from '@/components/ui/Button';
+import { useApp } from '@/context/AppContext';
 
 interface ContractorLayoutProps {
   children: React.ReactNode;
   assignedCount?: number;
   activeFilter?: string;
   onFilterChange?: (filter: string) => void;
+  selectedWard?: string;
+  onWardChange?: (ward: string) => void;
   onOpenQuickCapture?: () => void;
 }
 
@@ -17,13 +20,25 @@ export const ContractorLayout: React.FC<ContractorLayoutProps> = ({
   assignedCount = 4,
   activeFilter = 'all',
   onFilterChange,
+  selectedWard = 'all',
+  onWardChange,
   onOpenQuickCapture,
 }) => {
+  const { wards, workOrders } = useApp();
+
   const filters = [
     { id: 'all', label: 'All Jobs', count: assignedCount },
-    { id: 'high', label: 'High Priority', count: 2 },
-    { id: 'progress', label: 'In Progress', count: 1 },
-    { id: 'review', label: 'Submitted', count: 1 },
+    { id: 'high', label: 'High Priority', count: workOrders.filter(w => w.priority === 'High').length || 2 },
+    { id: 'progress', label: 'In Progress', count: workOrders.filter(w => w.status === 'In Progress').length || 1 },
+    { id: 'review', label: 'Needs Review', count: workOrders.filter(w => w.status === 'Needs Review' || w.status === 'Evidence Submitted').length || 1 },
+  ];
+
+  // Ward options derived from wards list & work orders
+  const availableWards = wards.length > 0 ? wards : [
+    { id: 'G/N', name: 'Ward G/N — Dadar / Mahim', code: 'G/N', city: 'Mumbai', pendingCount: 18 },
+    { id: 'H/W', name: 'Ward H/W — Bandra West', code: 'H/W', city: 'Mumbai', pendingCount: 14 },
+    { id: 'K/E', name: 'Ward K/E — Andheri East', code: 'K/E', city: 'Mumbai', pendingCount: 16 },
+    { id: 'L', name: 'Ward L — Kurla West', code: 'L', city: 'Mumbai', pendingCount: 15 },
   ];
 
   return (
@@ -48,28 +63,50 @@ export const ContractorLayout: React.FC<ContractorLayoutProps> = ({
               </div>
             </div>
 
-            {/* Assigned badge */}
-            <div className="bg-[#0F172A] border border-slate-700/80 rounded-xl px-3 py-1.5 text-right">
-              <span className="text-[10px] text-slate-400 block uppercase tracking-wider">
-                Assigned Today
-              </span>
-              <span className="text-lg font-bold text-teal-400 leading-none">
-                {assignedCount}
-              </span>
+            {/* Assigned badge & DB connection status */}
+            <div className="flex items-center gap-2">
+              <div className="bg-[#0F172A] border border-slate-700/80 rounded-xl px-3 py-1.5 text-right">
+                <span className="text-[10px] text-slate-400 block uppercase tracking-wider">
+                  Assigned Jobs
+                </span>
+                <span className="text-lg font-bold text-teal-400 leading-none">
+                  {workOrders.length || assignedCount}
+                </span>
+              </div>
             </div>
           </div>
 
-          {/* Quick status bar */}
-          <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-300">
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-slate-400">
-                <Wifi size={13} className="text-emerald-400" />
-                GPS & Sync Active
+          {/* Quick status & Database connectivity bar */}
+          <div className="mt-3 pt-2.5 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-300">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                <Wifi size={13} />
+                GPS Active
+              </span>
+              <span className="flex items-center gap-1 text-teal-300 bg-teal-950/80 border border-teal-500/30 px-2 py-0.5 rounded text-[11px]">
+                <Database size={12} className="text-teal-400" />
+                <span>Multi-DB Connected</span>
               </span>
             </div>
-            <span className="text-slate-400 text-[11px]">
-              Dadar & Parel Sector (BMC Ward 12)
-            </span>
+
+            {/* Ward Selector Dropdown in Header */}
+            {onWardChange && (
+              <div className="flex items-center gap-1.5">
+                <Layers size={13} className="text-teal-400" />
+                <select
+                  value={selectedWard}
+                  onChange={(e) => onWardChange(e.target.value)}
+                  className="bg-slate-800 border border-slate-700 text-teal-200 text-xs rounded-lg px-2.5 py-1 font-semibold focus:outline-none focus:border-teal-500"
+                >
+                  <option value="all">📍 All Wards ({availableWards.length})</option>
+                  {availableWards.map((w) => (
+                    <option key={w.id} value={w.code || w.id}>
+                      {w.code ? `Ward ${w.code}` : w.name.split('—')[0]} ({w.name.split('—')[1] || w.name})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Filter tabs */}

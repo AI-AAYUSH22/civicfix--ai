@@ -201,35 +201,56 @@ def seed_database(db: Session):
     db.add_all(contractors)
     db.flush()
 
-    # 3. Wards — All 27 Municipal Wards of Mumbai
+    # 3. Wards — All 48 Municipal Wards
     wards_data = [
-        {"name": "Ward A — Colaba / Churchgate / Fort", "code": "A", "city": "Mumbai", "lat": 18.9220, "lng": 72.8347},
-        {"name": "Ward B — Sandhurst Road / Dongri / Mazgaon", "code": "B", "city": "Mumbai", "lat": 18.9532, "lng": 72.8397},
-        {"name": "Ward C — Marine Lines / Bhuleshwar / Pydhonie", "code": "C", "city": "Mumbai", "lat": 18.9500, "lng": 72.8250},
-        {"name": "Ward D — Malabar Hill / Tardeo / Girgaon", "code": "D", "city": "Mumbai", "lat": 18.9667, "lng": 72.8167},
-        {"name": "Ward E — Byculla / Mumbai Central / Nagpada", "code": "E", "city": "Mumbai", "lat": 18.9750, "lng": 72.8300},
-        {"name": "Ward F/N — Matunga / Sion / Wadala", "code": "F/N", "city": "Mumbai", "lat": 19.0333, "lng": 72.8550},
-        {"name": "Ward F/S — Parel / Sewri / Lalbaug", "code": "F/S", "city": "Mumbai", "lat": 19.0000, "lng": 72.8400},
-        {"name": "Ward G/N — Dadar / Mahim / Dharavi", "code": "G/N", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
-        {"name": "Ward G/S — Worli / Prabhadevi / Lower Parel", "code": "G/S", "city": "Mumbai", "lat": 19.0100, "lng": 72.8200},
-        {"name": "Ward H/E — Santacruz East / Khar East / Vakola", "code": "H/E", "city": "Mumbai", "lat": 19.0800, "lng": 72.8550},
-        {"name": "Ward H/W — Bandra West / Khar West", "code": "H/W", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
-        {"name": "Ward K/E — Andheri East / Marol / Sakinaka", "code": "K/E", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
-        {"name": "Ward K/W — Andheri West / Juhu / Versova", "code": "K/W", "city": "Mumbai", "lat": 19.1200, "lng": 72.8250},
-        {"name": "Ward L — Kurla West / Sakinaka / Asalpha", "code": "L", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
-        {"name": "Ward M/E — Chembur East / Govandi / Mankhurd", "code": "M/E", "city": "Mumbai", "lat": 19.0550, "lng": 72.9100},
-        {"name": "Ward M/W — Chembur West / Tilak Nagar", "code": "M/W", "city": "Mumbai", "lat": 19.0600, "lng": 72.8950},
-        {"name": "Ward N — Ghatkopar / Vidyavihar / Pant Nagar", "code": "N", "city": "Mumbai", "lat": 19.0850, "lng": 72.9080},
-        {"name": "Ward P/N — Malad West / Marve / Manori", "code": "P/N", "city": "Mumbai", "lat": 19.1860, "lng": 72.8485},
-        {"name": "Ward P/S — Goregaon East & West / Aarey Colony", "code": "P/S", "city": "Mumbai", "lat": 19.1630, "lng": 72.8420},
-        {"name": "Ward R/C — Borivali West / Gorai / Charkop", "code": "R/C", "city": "Mumbai", "lat": 19.2300, "lng": 72.8550},
-        {"name": "Ward R/N — Dahisar / Borivali North", "code": "R/N", "city": "Mumbai", "lat": 19.2550, "lng": 72.8600},
-        {"name": "Ward R/S — Kandivali East & West / Poisar", "code": "R/S", "city": "Mumbai", "lat": 19.2050, "lng": 72.8500},
-        {"name": "Ward S — Bhandup / Powai / Kanjurmarg / Vikhroli", "code": "S", "city": "Mumbai", "lat": 19.1400, "lng": 72.9300},
-        {"name": "Ward T — Mulund / Nahur", "code": "T", "city": "Mumbai", "lat": 19.1720, "lng": 72.9550},
-        {"name": "Ward K/E-2 — Jogeshwari East", "code": "K/E-2", "city": "Mumbai", "lat": 19.1350, "lng": 72.8600},
-        {"name": "Ward L-2 — Chandivali / Powai South", "code": "L-2", "city": "Mumbai", "lat": 19.1100, "lng": 72.8900},
-        {"name": "Ward P/N-2 — Dindoshi / Malad East", "code": "P/N-2", "city": "Mumbai", "lat": 19.1750, "lng": 72.8700},
+        {"name": "Ward A - Churchgate, Colaba, Fort", "code": "A", "city": "Mumbai", "lat": 18.922, "lng": 72.8347},
+        {"name": "Ward B - Masjid Bunder, Dongri", "code": "B", "city": "Mumbai", "lat": 18.9515, "lng": 72.8375},
+        {"name": "Ward C - Pydhonie, Bhuleshwar", "code": "C", "city": "Mumbai", "lat": 18.9525, "lng": 72.8273},
+        {"name": "Ward D - Malabar Hill, Grant Road", "code": "D", "city": "Mumbai", "lat": 18.9667, "lng": 72.8167},
+        {"name": "Ward E - Byculla, Nagpada", "code": "E", "city": "Mumbai", "lat": 18.9772, "lng": 72.8335},
+        {"name": "Ward F/North - Matunga, Sion", "code": "F/N", "city": "Mumbai", "lat": 19.0268, "lng": 72.8553},
+        {"name": "Ward F/South - Parel, Sewri", "code": "F/S", "city": "Mumbai", "lat": 18.9954, "lng": 72.8396},
+        {"name": "Ward G/North - Dadar, Dharavi", "code": "G/N", "city": "Mumbai", "lat": 19.0178, "lng": 72.8478},
+        {"name": "Ward G/South - Worli, Lower Parel", "code": "G/S", "city": "Mumbai", "lat": 19.0068, "lng": 72.8156},
+        {"name": "Ward H/East - Santacruz East, Kalina", "code": "H/E", "city": "Mumbai", "lat": 19.0805, "lng": 72.853},
+        {"name": "Ward H/West - Bandra West", "code": "H/W", "city": "Mumbai", "lat": 19.0596, "lng": 72.8295},
+        {"name": "Ward K/East - Andheri East", "code": "K/E", "city": "Mumbai", "lat": 19.1136, "lng": 72.8697},
+        {"name": "Ward K/West - Andheri West", "code": "K/W", "city": "Mumbai", "lat": 19.1363, "lng": 72.8277},
+        {"name": "Ward P/North - Malad", "code": "P/N", "city": "Mumbai", "lat": 19.1866, "lng": 72.8486},
+        {"name": "Ward P/South - Goregaon", "code": "P/S", "city": "Mumbai", "lat": 19.1645, "lng": 72.8499},
+        {"name": "Ward R/Central - Borivali", "code": "R/C", "city": "Mumbai", "lat": 19.2307, "lng": 72.8567},
+        {"name": "Ward R/North - Dahisar", "code": "R/N", "city": "Mumbai", "lat": 19.2501, "lng": 72.8593},
+        {"name": "Ward R/South - Kandivali", "code": "R/S", "city": "Mumbai", "lat": 19.2045, "lng": 72.836},
+        {"name": "Ward L - Kurla, Sakinaka", "code": "L", "city": "Mumbai", "lat": 19.0726, "lng": 72.8845},
+        {"name": "Ward M/East - Govandi, Mankhurd", "code": "M/E", "city": "Mumbai", "lat": 19.056, "lng": 72.9126},
+        {"name": "Ward M/West - Chembur", "code": "M/W", "city": "Mumbai", "lat": 19.0345, "lng": 72.8953},
+        {"name": "Ward N - Ghatkopar", "code": "N", "city": "Mumbai", "lat": 19.0864, "lng": 72.9082},
+        {"name": "Ward S - Bhandup, Vikhroli", "code": "S", "city": "Mumbai", "lat": 19.1438, "lng": 72.9304},
+        {"name": "Ward T - Mulund", "code": "T", "city": "Mumbai", "lat": 19.1723, "lng": 72.9565},
+        {"name": "Ward K/E-2 - Jogeshwari East", "code": "K/E-2", "city": "Mumbai", "lat": 19.135, "lng": 72.86},
+        {"name": "Ward L-2 - Chandivali", "code": "L-2", "city": "Mumbai", "lat": 19.11, "lng": 72.89},
+        {"name": "Ward P/N-2 - Dindoshi", "code": "P/N-2", "city": "Mumbai", "lat": 19.175, "lng": 72.87},
+        {"name": "Naupada - Kopri", "code": "TMC-1", "city": "Thane", "lat": 19.1824, "lng": 72.9696},
+        {"name": "Uthalsar", "code": "TMC-2", "city": "Thane", "lat": 19.1979, "lng": 72.9774},
+        {"name": "Majiwada - Manpada", "code": "TMC-3", "city": "Thane", "lat": 19.2301, "lng": 72.9712},
+        {"name": "Vartak Nagar", "code": "TMC-4", "city": "Thane", "lat": 19.2066, "lng": 72.9529},
+        {"name": "Wagle Estate", "code": "TMC-5", "city": "Thane", "lat": 19.1915, "lng": 72.9463},
+        {"name": "Lokmanya Nagar - Savarkar Nagar", "code": "TMC-6", "city": "Thane", "lat": 19.2132, "lng": 72.9427},
+        {"name": "Kalwa", "code": "TMC-7", "city": "Thane", "lat": 19.1994, "lng": 72.9972},
+        {"name": "Mumbra", "code": "TMC-8", "city": "Thane", "lat": 19.176, "lng": 73.0233},
+        {"name": "Diva", "code": "TMC-9", "city": "Thane", "lat": 19.1852, "lng": 73.0401},
+        {"name": "Belapur", "code": "NMMC-1", "city": "Navi Mumbai", "lat": 19.0163, "lng": 73.0374},
+        {"name": "Nerul", "code": "NMMC-2", "city": "Navi Mumbai", "lat": 19.033, "lng": 73.018},
+        {"name": "Turbhe", "code": "NMMC-3", "city": "Navi Mumbai", "lat": 19.0725, "lng": 73.0157},
+        {"name": "Vashi", "code": "NMMC-4", "city": "Navi Mumbai", "lat": 19.07, "lng": 72.998},
+        {"name": "Kopar Khairane", "code": "NMMC-5", "city": "Navi Mumbai", "lat": 19.1026, "lng": 73.0035},
+        {"name": "Ghansoli", "code": "NMMC-6", "city": "Navi Mumbai", "lat": 19.1254, "lng": 72.9992},
+        {"name": "Airoli", "code": "NMMC-7", "city": "Navi Mumbai", "lat": 19.1517, "lng": 72.9934},
+        {"name": "Digha", "code": "NMMC-8", "city": "Navi Mumbai", "lat": 19.1678, "lng": 72.993},
+        {"name": "Kalyan West - Khadakpada", "code": "KDMC-1", "city": "Kalyan-Dombivli", "lat": 19.2437, "lng": 73.1355},
+        {"name": "Kalyan East - Vitawa", "code": "KDMC-2", "city": "Kalyan-Dombivli", "lat": 19.235, "lng": 73.142},
+        {"name": "Dombivli West - Manpada", "code": "KDMC-3", "city": "Kalyan-Dombivli", "lat": 19.2184, "lng": 73.0867},
+        {"name": "Dombivli East - Lodha", "code": "KDMC-4", "city": "Kalyan-Dombivli", "lat": 19.209, "lng": 73.095},
     ]
 
     wards = []
@@ -247,13 +268,17 @@ def seed_database(db: Session):
 
     # 4. Roads
     roads_data = [
-        (gn_ward, "Gokhale Road North"),
-        (gn_ward, "Ranade Road"),
-        (hw_ward, "Hill Road"),
-        (hw_ward, "Linking Road"),
-        (ke_ward, "Sahar Road"),
-        (ke_ward, "Andheri-Kurla Road"),
-        (l_ward, "LBS Marg"),
+        (wards[7], "Gokhale Road North"),
+        (wards[7], "Ranade Road"),
+        (wards[10], "Hill Road"),
+        (wards[10], "Linking Road"),
+        (wards[11], "Sahar Road"),
+        (wards[11], "Andheri-Kurla Road"),
+        (wards[18], "LBS Marg"),
+        (wards[24], "Gokhale Road Thane"),
+        (wards[26], "Ghodbunder Highway"),
+        (wards[36], "Palm Beach Road"),
+        (wards[34], "Nerul Station Road"),
     ]
     roads = []
     for ward, road_name in roads_data:
@@ -265,7 +290,7 @@ def seed_database(db: Session):
     # 5. Realistic Cases across all lifecycle stages
     now = datetime.utcnow()
     c1 = contractors[0]
-    w1 = gn_ward
+    w1 = wards[7]  # G/N
     r1 = roads[0]
 
     # Case 1: VERIFIED with full verification result (Gold standard demo case)

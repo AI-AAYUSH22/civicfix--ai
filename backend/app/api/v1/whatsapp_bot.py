@@ -4,6 +4,7 @@ import httpx
 import logging
 from datetime import datetime
 from fastapi import APIRouter, Request, Response, Depends, Form, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional, List, Tuple
 
@@ -216,3 +217,86 @@ async def receive_twilio_whatsapp_webhook(
 </Response>"""
 
     return Response(content=twiml_reply, media_type="application/xml")
+
+
+class WhatsAppSimulateRequest(BaseModel):
+    phone_number: str = "919876543210"
+    sender_name: str = "Citizen"
+    message: str = "Pothole near Dadar TT Circle https://maps.google.com/?q=19.0178,72.8478"
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class WhatsAppSimulateResponse(BaseModel):
+    status: str
+    case_id: Optional[str] = None
+    reply_message: str
+    location_status: str
+    location_confidence: float
+    assigned_ward: Optional[str] = None
+    conversation_step: str
+
+
+@router.post("/simulate", response_model=WhatsAppSimulateResponse)
+def simulate_whatsapp_interaction(
+    payload: WhatsAppSimulateRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Interactive WhatsApp bot simulation endpoint.
+    Allows instant testing of multi-turn complaints, location parsing, and automated bot replies.
+    """
+    phone_clean = payload.phone_number.replace("+", "").replace(" ", "")
+    user_id = f"wa-{phone_clean}"
+    
+    # 1. Check conversation state
+    conv_state = SocialIntakeService.get_or_create_conversation_state(
+        db,
+        channel="WHATSAPP",
+        user_identifier=user_id
+    )
+    
+    loc_pin = None
+    if payload.latitude is not None and payload.longitude is not None:
+        loc_pin = (float(payload.latitude), float(payload.longitude))
+
+    # 2. Ingest submission or follow-up
+    if conv_state.current_step in ["WAITING_LOCATION", "WAITING_CLARIFICATION"] and conv_state.active_case_id:
+        result = SocialIntakeService.ingest_followup(
+            db=db,
+            channel="WHATSAPP",
+            source_id=user_id,
+            username=f"{payload.sender_name} ({phone_clean})",
+            text=payload.message,
+            location_pin=loc_pin
+        )
+    else:
+        result = SocialIntakeService.ingest_submission(
+            db=db,
+            channel="WHATSAPP",
+            source_id=user_id,
+            username=f"{payload.sender_name} ({phone_clean})",
+            text=payload.message,
+            location_pin=loc_pin
+        )
+
+    # Re-fetch updated conversation state & case
+    db.refresh(conv_state)
+    case_id = result.get("case_id") or conv_state.active_case_id
+    ward_name = None
+    if case_id:
+        from app.models.case import Case
+        c = db.query(Case).filter(Case.id == case_id).first()
+        if c and c.ward:
+            ward_name = c.ward.name
+
+    return WhatsAppSimulateResponse(
+        status=result.get("status", "SUCCESS"),
+        case_id=case_id,
+        reply_message=result.get("reply_message", "Message received."),
+        location_status=result.get("location_status", "PENDING"),
+        location_confidence=float(result.get("location_confidence", 1.0) if result.get("location_confidence") is not None else 1.0),
+        assigned_ward=ward_name,
+        conversation_step=conv_state.current_step
+    )
+

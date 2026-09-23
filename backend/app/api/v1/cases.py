@@ -4,7 +4,7 @@ from typing import List, Optional
 import json
 
 from app.core.database import get_db
-from app.api.deps import get_current_user, require_municipal
+from app.api.deps import get_current_user, get_optional_current_user, require_municipal
 from app.models.user import User
 from app.models.case import Case, CaseLocation
 from app.models.ward import Ward, Road
@@ -30,6 +30,7 @@ def serialize_case(case: Case) -> dict:
         "source_id": getattr(case, "source_id", None),
         "source_username": getattr(case, "source_username", None),
         "source_url": getattr(case, "source_url", None),
+        "citizen_name": getattr(case, "citizen_name", None),
         "location_status": getattr(case, "location_status", "RESOLVED"),
         "location_confidence": getattr(case, "location_confidence", 1.0),
         "ward_id": case.ward_id,
@@ -68,12 +69,13 @@ async def create_case(
     reporter_email: Optional[str] = Form(None),
     photo: Optional[UploadFile] = File(None),
     ward_id: Optional[str] = Form(None),
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: Session = Depends(get_db)
 ):
     """
     Citizen reports a pothole with GPS coordinates, description, and optional photo.
     Automatically assigns nearest ward/road and checks for duplicates.
+    Supports authenticated citizens and guest citizens.
     """
     # 1. Check nearby duplicates
     duplicates = check_nearby_duplicates(db, latitude, longitude, radius_meters=20.0)
@@ -84,20 +86,25 @@ async def create_case(
     # 2. Map GPS to Ward and Road
     ward, road = find_nearest_ward_and_road(db, latitude, longitude)
     if ward_id:
-        custom_ward = db.query(Ward).filter(Ward.id == ward_id).first()
+        custom_ward = db.query(Ward).filter((Ward.id == ward_id) | (Ward.code == ward_id) | (Ward.name == ward_id)).first()
         if custom_ward:
             ward = custom_ward
 
     # 3. Create Case
     title = f"Pothole near {landmark}" if landmark else (f"Pothole on {road.name}" if road else "Road surface defect")
+    reported_by_id = current_user.id if current_user else None
+    citizen_display_name = current_user.full_name if current_user else (reporter_email or "Citizen Web Report")
+    
     new_case = Case(
         description=description,
         severity=severity,
         status="REPORTED",
         title=title,
+        channel="PORTAL",
+        citizen_name=citizen_display_name,
         ward_id=ward.id if ward else None,
         road_id=road.id if road else None,
-        reported_by=current_user.id,
+        reported_by=reported_by_id,
     )
     db.add(new_case)
     db.flush()
@@ -132,25 +139,28 @@ async def create_case(
     db.refresh(new_case)
 
     # 6. Log Audit Event & Create Notification
-    actor_identifier = current_user.full_name or current_user.email
-    actor_role_str = getattr(current_user.role, "value", str(current_user.role))
+    actor_identifier = current_user.full_name if current_user else (reporter_email or "Citizen Web")
+    actor_role_str = getattr(current_user.role, "value", str(current_user.role)) if current_user else "CITIZEN"
+    actor_id_val = current_user.id if current_user else None
+    
     log_audit_event(
         db=db,
         action="CASE_CREATED",
         entity_type="Case",
         entity_id=new_case.id,
-        actor_id=current_user.id,
+        actor_id=actor_id_val,
         actor_name=actor_identifier,
         actor_role=actor_role_str,
         details={"latitude": latitude, "longitude": longitude, "severity": severity, "duplicate_warning": duplicate_warning}
     )
-    create_notification(
-        db=db,
-        title="Complaint Submitted",
-        message=f"Case {new_case.id} has been recorded in {ward.name if ward else 'Ward'} and queued for municipal validation.",
-        event_type="CASE_CREATED",
-        user_id=current_user.id
-    )
+    if current_user:
+        create_notification(
+            db=db,
+            title="Complaint Submitted",
+            message=f"Case {new_case.id} has been recorded in {ward.name if ward else 'Ward'} and queued for municipal validation.",
+            event_type="CASE_CREATED",
+            user_id=current_user.id
+        )
 
     response = serialize_case(new_case)
     if duplicate_warning:

@@ -35,7 +35,10 @@ export type CaseStatus = CivicStatus;
 export interface Ward {
   id: string;
   name: string;
-  city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
+  city: 'Mumbai' | 'Thane' | 'Navi Mumbai' | string;
+  code?: string;
+  center_lat?: number;
+  center_lng?: number;
   pendingCount: number;
 }
 
@@ -74,8 +77,11 @@ export interface ExpenseMemoItem {
 export interface PotholeCase {
   id: string;
   wardId: string;
+  wardName?: string;
+  wardCode?: string;
   location: string;
   landmark?: string;
+  roadName?: string;
   city: 'Mumbai' | 'Thane' | 'Navi Mumbai';
   coordinates: { x: number; y: number; lat?: number; lng?: number };
   severity: Severity;
@@ -90,7 +96,10 @@ export interface PotholeCase {
   afterImage?: string;
   verification?: RepairVerification;
   citizenName?: string;
-  channel?: 'APP' | 'WHATSAPP' | 'REDDIT';
+  channel?: 'APP' | 'WHATSAPP' | 'REDDIT' | 'PORTAL';
+  sourceUsername?: string;
+  sourceUrl?: string;
+  locationStatus?: string;
   expenseMemo?: ExpenseMemoItem;
 }
 
@@ -99,7 +108,13 @@ export interface WorkOrder {
   caseId: string;
   title: string;
   location: string;
+  landmark?: string;
+  roadName?: string;
   ward: string;
+  wardId?: string;
+  wardCode?: string;
+  wardDbName?: string;
+  city?: 'Mumbai' | 'Thane' | 'Navi Mumbai';
   priority: 'High' | 'Medium' | 'Low';
   status: 'Assigned' | 'In Progress' | 'Evidence Submitted' | 'Verified' | 'Needs Review' | 'Not Verified' | 'Closed';
   assignedDate: string;
@@ -121,4 +136,4 @@ export interface DashboardStats {
   resolvedThisMonth: number;
 }
 
-export type AppSurface = 'landing' | 'login' | 'citizen' | 'contractor' | 'municipal' | 'showcase' | 'evidence' | 'verification';
+export type AppSurface = 'landing' | 'login' | 'citizen' | 'contractor' | 'municipal' | 'showcase' | 'evidence' | 'verification' | 'whatsapp';

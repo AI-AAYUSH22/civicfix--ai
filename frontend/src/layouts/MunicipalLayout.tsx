@@ -32,7 +32,7 @@ export const MunicipalLayout: React.FC<MunicipalLayoutProps> = ({
   children,
   activeSection,
   onSelectSection,
-  selectedWard = 'Ward G/N — Dadar West / Mahim',
+  selectedWard = 'MMR Municipal Jurisdiction (48 Wards)',
   userName = 'Er. Rajesh Kulkarni',
   employeeId = 'BMC-ENG-4001',
   onLogout,

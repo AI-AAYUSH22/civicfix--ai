@@ -54,6 +54,21 @@ def run_migrations():
                 for col_name, col_type in new_columns:
                     if col_name not in existing_cols:
                         conn.execute(text(f"ALTER TABLE cases ADD COLUMN {col_name} {col_type}"))
+
+                # Check columns in users table
+                user_res = conn.execute(text("PRAGMA table_info(users)")).fetchall()
+                existing_user_cols = {row[1] for row in user_res}
+                user_new_columns = [
+                    ("employee_id", "VARCHAR(50)"),
+                    ("contractor_id", "VARCHAR(50)"),
+                    ("phone", "VARCHAR(50)"),
+                    ("hashed_password", "VARCHAR(255)"),
+                    ("is_active", "BOOLEAN DEFAULT 1"),
+                ]
+                for col_name, col_type in user_new_columns:
+                    if col_name not in existing_user_cols:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+
                 conn.commit()
             except Exception as e:
                 # Table might not exist yet, Base.metadata.create_all will create it

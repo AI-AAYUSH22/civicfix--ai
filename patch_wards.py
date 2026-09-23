@@ -26,6 +26,9 @@ mumbai_wards = [
     {"name": "Ward N - Ghatkopar", "code": "N", "city": "Mumbai", "lat": 19.0864, "lng": 72.9082},
     {"name": "Ward S - Bhandup, Vikhroli", "code": "S", "city": "Mumbai", "lat": 19.1438, "lng": 72.9304},
     {"name": "Ward T - Mulund", "code": "T", "city": "Mumbai", "lat": 19.1723, "lng": 72.9565},
+    {"name": "Ward K/E-2 - Jogeshwari East", "code": "K/E-2", "city": "Mumbai", "lat": 19.1350, "lng": 72.8600},
+    {"name": "Ward L-2 - Chandivali", "code": "L-2", "city": "Mumbai", "lat": 19.1100, "lng": 72.8900},
+    {"name": "Ward P/N-2 - Dindoshi", "code": "P/N-2", "city": "Mumbai", "lat": 19.1750, "lng": 72.8700},
 ]
 
 thane_wards = [
@@ -51,7 +54,14 @@ navi_mumbai_wards = [
     {"name": "Digha", "code": "NMMC-8", "city": "Navi Mumbai", "lat": 19.1678, "lng": 72.9930},
 ]
 
-all_wards = mumbai_wards + thane_wards + navi_mumbai_wards
+kalyan_wards = [
+    {"name": "Kalyan West - Khadakpada", "code": "KDMC-1", "city": "Kalyan-Dombivli", "lat": 19.2437, "lng": 73.1355},
+    {"name": "Kalyan East - Vitawa", "code": "KDMC-2", "city": "Kalyan-Dombivli", "lat": 19.2350, "lng": 73.1420},
+    {"name": "Dombivli West - Manpada", "code": "KDMC-3", "city": "Kalyan-Dombivli", "lat": 19.2184, "lng": 73.0867},
+    {"name": "Dombivli East - Lodha", "code": "KDMC-4", "city": "Kalyan-Dombivli", "lat": 19.2090, "lng": 73.0950},
+]
+
+all_wards = mumbai_wards + thane_wards + navi_mumbai_wards + kalyan_wards
 
 # 1. Patch demo_data.py
 demo_data_path = "backend/app/seed/demo_data.py"

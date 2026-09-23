@@ -1,6 +1,7 @@
 import { MapPin, ChevronRight } from 'lucide-react';
 import type { PotholeCase } from '@/types';
 import { statusStyles, severityStyles, formatDate } from '@/utils/caseUtils';
+import ChannelBadge from '@/components/ui/ChannelBadge';
 
 interface CaseCardProps {
   potholeCase: PotholeCase;
@@ -26,6 +27,10 @@ export default function CaseCard({ potholeCase, onOpen }: CaseCardProps) {
           <span className="truncate">{potholeCase.location}</span>
         </div>
         <p className="mt-0.5 text-xs text-navy-400">Reported {formatDate(potholeCase.reportedDate)}</p>
+      </div>
+
+      <div className="hidden shrink-0 sm:block">
+        <ChannelBadge channel={potholeCase.channel} size="sm" />
       </div>
 
       <div className={`hidden shrink-0 rounded-full px-2.5 py-1 text-xs font-medium sm:block ${severity.bg} ${severity.text}`}>

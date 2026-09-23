@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, HardHat, Building2, Palette } from 'lucide-react';
+import { Smartphone, HardHat, Building2, Palette, MessageSquare } from 'lucide-react';
 import type { AppSurface } from '@/types';
 
 interface SurfaceSwitcherProps {
@@ -23,6 +23,12 @@ export const SurfaceSwitcher: React.FC<SurfaceSwitcherProps> = ({
       label: 'Citizen App',
       icon: <Smartphone size={16} />,
       badge: 'Mobile',
+    },
+    {
+      id: 'whatsapp',
+      label: 'WhatsApp Bot',
+      icon: <MessageSquare size={16} />,
+      badge: 'AI Bot',
     },
     {
       id: 'contractor',

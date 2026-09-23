@@ -26,6 +26,13 @@ class CaseResponse(BaseModel):
     description: str
     severity: str
     status: str
+    channel: Optional[str] = "PORTAL"
+    source_id: Optional[str] = None
+    source_username: Optional[str] = None
+    source_url: Optional[str] = None
+    citizen_name: Optional[str] = None
+    location_status: Optional[str] = "RESOLVED"
+    location_confidence: Optional[float] = 1.0
     ward_id: Optional[str] = None
     ward_name: Optional[str] = None
     road_id: Optional[str] = None

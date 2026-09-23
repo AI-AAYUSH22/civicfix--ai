@@ -8,7 +8,7 @@ from app.api.deps import get_current_user, require_municipal, require_contractor
 from app.models.user import User
 from app.models.case import Case
 from app.models.work_order import WorkOrder
-from app.models.ward import Contractor
+from app.models.ward import Ward, Contractor
 from app.schemas.work_order import WorkOrderCreate, WorkOrderResponse, WorkOrderStatusUpdate
 from app.services.state_machine import validate_state_transition
 from app.services.audit_service import log_audit_event, create_notification
@@ -20,6 +20,18 @@ def serialize_work_order(wo: WorkOrder) -> dict:
     before_ev = next((ev for ev in wo.evidence_files if ev.capture_type == "BEFORE"), None)
     after_ev = next((ev for ev in wo.evidence_files if ev.capture_type == "AFTER"), None)
     citizen_ev = next((ev for ev in case.evidence_files if ev.capture_type == "CITIZEN"), None) if case else None
+
+    ward_id_val = case.ward_id if case else None
+    ward_code_val = case.ward.code if (case and case.ward) else None
+    ward_db_map = {
+        "w12": "contractor_ward_a.db",
+        "w07": "contractor_ward_b.db",
+        "w18": "contractor_ward_c.db",
+        "G/N": "contractor_ward_a.db",
+        "H/W": "contractor_ward_b.db",
+        "K/E": "contractor_ward_c.db",
+    }
+    ward_db_name = ward_db_map.get(ward_id_val, ward_db_map.get(ward_code_val, "contractor_default.db"))
 
     return {
         "id": wo.id,
@@ -37,8 +49,12 @@ def serialize_work_order(wo: WorkOrder) -> dict:
         "case_title": case.title if case else None,
         "case_description": case.description if case else None,
         "case_location": case.location.address if (case and case.location) else None,
-        "landmark": case.location.landmark if (case and case.location) else None,
+        "road_name": case.road.name if (case and case.road) else None,
+        "ward_id": case.ward_id if case else None,
         "ward_name": case.ward.name if (case and case.ward) else None,
+        "ward_code": case.ward.code if (case and case.ward) else None,
+        "city": case.ward.city if (case and case.ward) else None,
+        "ward_db": ward_db_name,
         "before_photo_captured": before_ev is not None,
         "before_photo_url": before_ev.storage_path if before_ev else None,
         "after_photo_captured": after_ev is not None,
@@ -118,16 +134,26 @@ def create_work_order(
     return serialize_work_order(work_order)
 
 @router.get("", response_model=List[dict])
-def list_work_orders(status: Optional[str] = None, db: Session = Depends(get_db)):
+def list_work_orders(
+    status: Optional[str] = None,
+    ward_id: Optional[str] = None,
+    contractor_id: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
     query = db.query(WorkOrder)
     if status:
         query = query.filter(WorkOrder.status == status)
+    if contractor_id:
+        query = query.filter(WorkOrder.contractor_id == contractor_id)
+    if ward_id:
+        query = query.join(Case).filter((Case.ward_id == ward_id) | (Case.ward.has(Ward.code == ward_id)))
     orders = query.order_by(WorkOrder.assigned_at.desc()).all()
     return [serialize_work_order(wo) for wo in orders]
 
 @router.get("/my", response_model=List[dict])
 def get_my_work_orders(
     contractor_id: Optional[str] = None,
+    ward_id: Optional[str] = None,
     current_user: User = Depends(require_contractor),
     db: Session = Depends(get_db)
 ):
@@ -137,6 +163,8 @@ def get_my_work_orders(
     query = db.query(WorkOrder)
     if contractor_id:
         query = query.filter(WorkOrder.contractor_id == contractor_id)
+    if ward_id:
+        query = query.join(Case).filter((Case.ward_id == ward_id) | (Case.ward.has(Ward.code == ward_id)))
     orders = query.order_by(WorkOrder.assigned_at.desc()).all()
     return [serialize_work_order(wo) for wo in orders]
 

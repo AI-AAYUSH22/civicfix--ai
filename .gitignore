@@ -59,3 +59,7 @@ backend/uploads/complaints/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Temp backup
+backup_db/
+

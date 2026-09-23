@@ -15,6 +15,7 @@ import { MunicipalDashboardView } from '@/pages/municipal/MunicipalDashboardView
 import { MunicipalLogin } from '@/pages/municipal/MunicipalLogin';
 import { LandingPage } from '@/pages/landing/LandingPage';
 import { DesignSystemShowcase } from '@/pages/showcase/DesignSystemShowcase';
+import { WhatsAppBotView } from '@/pages/social/WhatsAppBotView';
 import type { AppSurface } from '@/types';
 
 
@@ -69,6 +70,7 @@ function AppContent() {
 
         {surface === 'citizen' && <CitizenDashboard />}
 
+        {surface === 'whatsapp' && <WhatsAppBotView />}
 
         {surface === 'contractor' && <ContractorDashboard />}
 
